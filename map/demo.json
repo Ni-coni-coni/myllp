@@ -1,0 +1,11 @@
+{
+  "offset":0,
+  "speed":[
+    {"time":0,"speedRatio":1}
+  ],
+  "notes":[
+    {"type":0,"noteTrack":5,"noteTime":5000},
+    {"type":0,"noteTrack":3,"noteTime":7000},
+    {"type":0,"noteTrack":9,"noteTime":12000}
+  ]
+}
