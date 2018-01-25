@@ -1,14 +1,21 @@
-const fps = 30;
+const fps = 60;
+const frameInterval = 1000 / fps;
 
 var gameDiv = document.getElementById("gameDiv");
 var bgImage = new Image();
 var skinImage = new Image();
 
+var gameCanvas = document.getElementById("gameCanvas");
+var gameContext = gameCanvas.getContext("2d");
+
 var mapData;
 var notes = [];
 var notesToRender = [];
-var gameTime;
-var baselineHiSpeed = 160;
+var speedLines = [];
+var currentTiming;
+var currentPosition;
+var baselineHiSpeed = 300;
+var offset = 0;
 
 initGame();
 
@@ -38,14 +45,9 @@ function initImages() {
         bgContext.drawImage(bgImage, 0, 0, bgCanvas.width, bgCanvas.height);
     }
     // init skin
-    let gameCanvas = document.getElementById("gameCanvas");
     gameCanvas.width = 1024;
     gameCanvas.height = 682;
-    let gameContext = gameCanvas.getContext("2d");
     skinImage.src = "image/skin.png";
-    skinImage.onload = function() {
-        gameContext.drawImage(skinImage, 396, 15, 128, 128, 0, 0, 128, 128);
-    }
 }
 
 function initMap() {
@@ -53,13 +55,36 @@ function initMap() {
     let xhr = new XMLHttpRequest;
     function loadMap() {
         mapData = eval("(" + xhr.responseText + ")");
-        for (let i in mapData.notes) {
-            let noteArr = new Array(2);
-            noteArr[0] = mapData.notes[i].dest;
-            noteArr[1] = mapData.notes[i].noteTime;
-            notes.push(noteArr);
+        offset = mapData.offset; // -offset should not be larger than first speed change timing
+        for (let i in mapData.speed) {
+            let oneSpeedLine = new Array(2);
+            oneSpeedLine[0] = mapData.speed[i].changeTiming;
+            oneSpeedLine[1] = mapData.speed[i].speedRatio;
+            speedLines.push(oneSpeedLine);
         }
-        notesToRender = notes;
+        console.log(speedLines);
+        let speedLineCount = 0;
+        let speedLineCountPrev = 0;
+        let accumulateDist = 0;
+        for (let i in mapData.notes) {
+            let oneNote = new Array(3);
+            oneNote[0] = mapData.notes[i].noteTiming;
+            console.log(oneNote[0]);
+            oneNote[1] = mapData.notes[i].destination;
+            console.log(oneNote[1]);
+            console.log(speedLines[speedLineCount][0]);
+            while (oneNote[0] > speedLines[speedLineCount][0]) {
+                speedLineCount ++;
+            }
+            for (let j = speedLineCountPrev; j < speedLineCount; j ++) {
+                accumulateDist += speedLines[j][1] * baselineHiSpeed * speedLines[j][0];
+            }
+            speedLineCountPrev = speedLineCount;
+            oneNote[2] = accumulateDist + speedLines[speedLineCount][1] * baselineHiSpeed *
+                (oneNote[0] - speedLines[speedLineCount][0]);
+            notes.push(oneNote);
+        }
+        console.log(notes)
     }
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
@@ -99,7 +124,7 @@ function addCircleDiv(centerX, centerY, diameter, id, className) {
     let circleDiv = document.createElement("div");
     circleDiv.className = className;
     circleDiv.id = id;
-    circleDiv.style.position = "absolute";
+    circleDiv.style.currentPosition = "absolute";
     circleDiv.style.display = "block";
     circleDiv.style.background = "yellow";
     circleDiv.style.left = (centerX - diameter / 2) / 1024 * 100 + "%";
@@ -110,7 +135,6 @@ function addCircleDiv(centerX, centerY, diameter, id, className) {
 }
 
 function resize() {
-    let gameDiv = document.getElementById("gameDiv");
     let ratio = 682 / 1024;
     let w = window.innerWidth;
     let h = window.innerHeight;
@@ -130,12 +154,12 @@ function resize() {
 
 }
 
-function renderGame(fps) {
+function renderGame() {
+    currentPosition = - baselineHiSpeed * offset;
     let frameCount = 0;
-    let frameInterval = 1000 / fps;
     let now, elapsed;
-    let startTime = Date.now();
-    let then = startTime;
+    let startTiming = Date.now();
+    let then = startTiming;
     (function animate() {
         requestAnimationFrame(animate);
         now = Date.now();
@@ -143,41 +167,46 @@ function renderGame(fps) {
         if (elapsed > frameInterval) {
             frameCount ++;
             then = now - (elapsed % frameInterval);
-            renderOneFrame(now - startTime, notesToRender, notes);
+            renderOneFrame(now - startTiming, notesToRender, notes);
         }
     })();
 }
 
-function renderOneFrame(gameTime, renderList, wholeList) {
+function renderOneFrame(currentTiming, renderList, wholeList) {
 
-    let gameCanvas = document.getElementById("gameCanvas"); //TODO var gameCanvas at beginning
+    currentPosition += frameInterval;
     gameCanvas.getContext("2d").clearRect(0, 0, 1024, 682);
-
-    for (let noteIndex in renderList) {
-        var circleDiv = document.getElementById("circle" + renderList[noteIndex][0]);
+    
+    for (let index in renderList) {
+        var circleDiv = document.getElementById("circle" + renderList[index][1]);
         drawNote(512, 170,
             circleDiv.offsetLeft + circleDiv.offsetWidth / 2,
             circleDiv.offsetTop + circleDiv.offsetHeight / 2,
-            renderList[noteIndex][1], gameTime);
+            renderList[index][0], currentTiming
+        );
     }
 }
 
 //center:(512px，170px), length:425px, diameter:136px
-function drawNote(startX, startY, destX, destY, noteTime, gameTime) {
-    console.log(destX, destY);
-    let wholeDistance = Math.sqrt(Math.pow(destY - startY, 2) + Math.pow(startY - startX, 2));
-    let FromDestDistance = baselineHiSpeed * (gameTime - noteTime) / 1000;
-    let FromDestX = destX + FromDestDistance / wholeDistance * (destX - startX);
-    let FromDestY = destY + FromDestDistance / wholeDistance * (destY - startY);
+function drawNote(startX, startY, destX, destY, noteTiming, currentTiming) {
+    let wholeDistance = Math.sqrt(Math.pow(destX - startX, 2) + Math.pow(destY - startY, 2));
+    let FromDestDistance = baselineHiSpeed * (currentTiming - noteTiming) / 1000;
+    let FromDestX = FromDestDistance / wholeDistance * (destX - startX);
+    let FromDestY = FromDestDistance / wholeDistance * (destY - startY);
     let noteX = destX + FromDestX;
     let noteY = destY + FromDestY;
     let finishedDistanceRatio = (FromDestDistance + wholeDistance) / wholeDistance;
-    let noteSizeRatio = 1;
-    let gameContext = document.getElementById("gameCanvas").getContext("2d");
-    gameContext.drawImage(skinImage, 396, 15, 128, 128, noteX - 64, noteY - 64, 128, 128);
-    gameContext.drawImage(skinImage, 396, 15, 128, 128, 512 - 64, 170 - 64, 128, 128);
+    let noteSizeRatio = finishedDistanceRatio > 1 ? 1 : finishedDistanceRatio;
+    if (noteSizeRatio < 0) {
+        noteSizeRatio = 0;
+    } //fix afterwards
+    let noteLeft = noteX - 68 * noteSizeRatio;
+    let noteTop = noteY - 68 * noteSizeRatio;
+    let noteSize = 136 * noteSizeRatio;
+    gameContext.drawImage(skinImage, 396, 15, 128, 128,
+        noteLeft, noteTop, noteSize, noteSize);
 }
 
 function test() {
-    renderGame(fps);
+    renderGame();
 }
