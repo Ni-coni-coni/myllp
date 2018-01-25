@@ -1,11 +1,19 @@
 {
   "offset":0,
   "speed":[
-    {"time":0,"speedRatio":1}
+    {"time":0,"speedRatio":1},
+    {"time":6000,"speedRatio":2},
+    {"time":10000,"speedRatio":0.5}
   ],
   "notes":[
-    {"type":0,"noteTrack":5,"noteTime":5000},
-    {"type":0,"noteTrack":3,"noteTime":7000},
-    {"type":0,"noteTrack":9,"noteTime":12000}
+    {"type":0,"dest":1,"noteTime":5000},
+    {"type":0,"dest":2,"noteTime":5100},
+    {"type":0,"dest":3,"noteTime":5200},
+    {"type":0,"dest":4,"noteTime":5300},
+    {"type":0,"dest":5,"noteTime":5400},
+    {"type":0,"dest":6,"noteTime":5500},
+    {"type":0,"dest":7,"noteTime":5600},
+    {"type":0,"dest":8,"noteTime":5700},
+    {"type":0,"dest":9,"noteTime":5800}
   ]
 }

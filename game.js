@@ -8,7 +8,7 @@ var mapData;
 var notes = [];
 var notesToRender = [];
 var gameTime;
-var noteSpeed = 160;
+var baselineHiSpeed = 160;
 
 initGame();
 
@@ -55,10 +55,11 @@ function initMap() {
         mapData = eval("(" + xhr.responseText + ")");
         for (let i in mapData.notes) {
             let noteArr = new Array(2);
-            noteArr[0] = mapData.notes[i].noteTrack;
+            noteArr[0] = mapData.notes[i].dest;
             noteArr[1] = mapData.notes[i].noteTime;
             notes.push(noteArr);
         }
+        notesToRender = notes;
     }
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
@@ -84,19 +85,20 @@ function initTouchArea() {
     let distance = 425;
     let pi = Math.PI;
     let angle = pi / 8;
-    let diameter = 136
-    for (let i = 0; i < 9; i ++) {
+    let diameter = 136;
+    for (let i = 1; i <= 9; i ++) {
         addCircleDiv(
-            notesStartX + distance * Math.cos(pi + angle * i),
-            notesStartY - distance * Math.sin(pi + angle * i),
+            notesStartX + distance * Math.cos(pi + angle * (i - 1)),
+            notesStartY - distance * Math.sin(pi + angle * (i - 1)),
             diameter, "circle" + i, "circleDiv"
         );
     }
 }
 
 function addCircleDiv(centerX, centerY, diameter, id, className) {
-    let circleDiv = document.createElement(id);
+    let circleDiv = document.createElement("div");
     circleDiv.className = className;
+    circleDiv.id = id;
     circleDiv.style.position = "absolute";
     circleDiv.style.display = "block";
     circleDiv.style.background = "yellow";
@@ -147,18 +149,35 @@ function renderGame(fps) {
 }
 
 function renderOneFrame(gameTime, renderList, wholeList) {
+
     let gameCanvas = document.getElementById("gameCanvas"); //TODO var gameCanvas at beginning
-    gameCanvas.clearRect(0, 0, 1024, 682);
-    for (let i in renderList) {
-        drawNote(renderList[i][0], renderList[i][1], gameTime, noteSpeed);
+    gameCanvas.getContext("2d").clearRect(0, 0, 1024, 682);
+
+    for (let noteIndex in renderList) {
+        var circleDiv = document.getElementById("circle" + renderList[noteIndex][0]);
+        drawNote(512, 170,
+            circleDiv.offsetLeft + circleDiv.offsetWidth / 2,
+            circleDiv.offsetTop + circleDiv.offsetHeight / 2,
+            renderList[noteIndex][1], gameTime);
     }
 }
 
 //center:(512px，170px), length:425px, diameter:136px
-function drawNote(fromX, fromY, toX, toY, noteTime, gameTime, noteSpeed) {
-
+function drawNote(startX, startY, destX, destY, noteTime, gameTime) {
+    console.log(destX, destY);
+    let wholeDistance = Math.sqrt(Math.pow(destY - startY, 2) + Math.pow(startY - startX, 2));
+    let FromDestDistance = baselineHiSpeed * (gameTime - noteTime) / 1000;
+    let FromDestX = destX + FromDestDistance / wholeDistance * (destX - startX);
+    let FromDestY = destY + FromDestDistance / wholeDistance * (destY - startY);
+    let noteX = destX + FromDestX;
+    let noteY = destY + FromDestY;
+    let finishedDistanceRatio = (FromDestDistance + wholeDistance) / wholeDistance;
+    let noteSizeRatio = 1;
+    let gameContext = document.getElementById("gameCanvas").getContext("2d");
+    gameContext.drawImage(skinImage, 396, 15, 128, 128, noteX - 64, noteY - 64, 128, 128);
+    gameContext.drawImage(skinImage, 396, 15, 128, 128, 512 - 64, 170 - 64, 128, 128);
 }
 
 function test() {
-    //console.log(mapData)
+    renderGame(fps);
 }
