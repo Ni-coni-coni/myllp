@@ -12,10 +12,11 @@ var mapData;
 var notes = [];
 var notesToRender = [];
 var speedLines = [];
-var currentTiming;
-var currentPosition;
-var baselineHiSpeed = 300;
+var gameTiming;
+var gamePosition;
+var baselineHiSpeed = 1;
 var offset = 0;
+var renderRange = 425;
 
 initGame();
 
@@ -55,35 +56,51 @@ function initMap() {
     let xhr = new XMLHttpRequest;
     function loadMap() {
         mapData = eval("(" + xhr.responseText + ")");
-        offset = mapData.offset; // -offset should not be larger than first speed change timing
+        // get offset, - offset should not be larger than first speed change timing.
+        offset = mapData.offset;
+        // fill speed line array, speedLines[i][0] means timing of i-th speed line(with offset),
+        // speedLines[i][1] means speed line position in hi-speed-based beatmap of i-th speed line
+        // speedLines[i][2] means speed ratio between i-th speed line and (i+1)-th or the end.
+        // first set a baseline speed line of 0 timing(with offset)
+        speedLines.push([0, 0, mapData.originSpeedRatio]);
+        let prevSpeedLine = speedLines[0];
         for (let i in mapData.speed) {
             let oneSpeedLine = new Array(2);
-            oneSpeedLine[0] = mapData.speed[i].changeTiming;
-            oneSpeedLine[1] = mapData.speed[i].speedRatio;
+            oneSpeedLine[0] = mapData.speed[i].speedChangeTiming + offset;
+            oneSpeedLine[1] = baselineHiSpeed * prevSpeedLine[2] * (oneSpeedLine[0] - prevSpeedLine[0]) +
+                prevSpeedLine[1];
+            oneSpeedLine[2] = mapData.speed[i].speedRatio;
             speedLines.push(oneSpeedLine);
+            prevSpeedLine = oneSpeedLine;
         }
-        console.log(speedLines);
-        let speedLineCount = 0;
-        let speedLineCountPrev = 0;
-        let accumulateDist = 0;
+        // fill note array, notes[i][0] means timing of i-th note(with offset),
+        // notes[i][1] means destination of i-th note,
+        // notes[i][2] means position of i-th note(in hi-speed-based beatmap).
+        let currSpeedLineIdx = 0;
+        let prevSpeedLineIdx = 0;
+        let accumulatedDist = 0;
         for (let i in mapData.notes) {
             let oneNote = new Array(3);
-            oneNote[0] = mapData.notes[i].noteTiming;
-            console.log(oneNote[0]);
+            oneNote[0] = mapData.notes[i].noteTiming + offset;
             oneNote[1] = mapData.notes[i].destination;
-            console.log(oneNote[1]);
-            console.log(speedLines[speedLineCount][0]);
-            while (oneNote[0] > speedLines[speedLineCount][0]) {
-                speedLineCount ++;
+            // get current speed line index(the speed line just before current note).
+            while (currSpeedLineIdx < speedLines.length && oneNote[0] > speedLines[currSpeedLineIdx][0]) {
+                currSpeedLineIdx ++;
             }
-            for (let j = speedLineCountPrev; j < speedLineCount; j ++) {
-                accumulateDist += speedLines[j][1] * baselineHiSpeed * speedLines[j][0];
+            currSpeedLineIdx --;
+            // accumulate distance(in hi-speed-based beatmap) from previous speed line to the current.
+            for (let j = prevSpeedLineIdx; j < currSpeedLineIdx; j ++) {
+                accumulatedDist += speedLines[j][2] * baselineHiSpeed *
+                    (speedLines[j+1][0] - speedLines[j][0]);
             }
-            speedLineCountPrev = speedLineCount;
-            oneNote[2] = accumulateDist + speedLines[speedLineCount][1] * baselineHiSpeed *
-                (oneNote[0] - speedLines[speedLineCount][0]);
+            // calculate the position of current note(in hi-speed-based beatmap) and push into array.
+            oneNote[2] = accumulatedDist + speedLines[currSpeedLineIdx][2] * baselineHiSpeed *
+                (oneNote[0] - speedLines[currSpeedLineIdx][0]);
             notes.push(oneNote);
+            // record previous speed line for next loop.
+            prevSpeedLineIdx = currSpeedLineIdx;
         }
+        console.log(speedLines)
         console.log(notes)
     }
     xhr.onreadystatechange = function() {
@@ -155,7 +172,18 @@ function resize() {
 }
 
 function renderGame() {
-    currentPosition = - baselineHiSpeed * offset;
+
+    let currSpeedLineIdx = 0;
+    let prevSpeedLineIdx = 0;
+    let accumulatedDist = 0;
+    // initialize game and notes to render in first frame
+    gameTiming = 0;
+    gamePosition = 0;
+    for (let i = 0; i < notes.length && notes[i][1] < renderRange; i++) {
+        if (notes[i][1] > - renderRange) {
+            notesToRender.push(notes[i]);
+        }
+    }
     let frameCount = 0;
     let now, elapsed;
     let startTiming = Date.now();
@@ -167,30 +195,43 @@ function renderGame() {
         if (elapsed > frameInterval) {
             frameCount ++;
             then = now - (elapsed % frameInterval);
-            renderOneFrame(now - startTiming, notesToRender, notes);
+            gameTiming = now - startTiming;
+            // calculate current game position the same as the part of initialization
+            while (currSpeedLineIdx < speedLines.length && gameTiming > speedLines[currSpeedLineIdx][0]) {
+                currSpeedLineIdx ++;
+            }
+            currSpeedLineIdx --;
+            for (let j = prevSpeedLineIdx; j < currSpeedLineIdx; j ++) {
+                accumulatedDist += speedLines[j][2] * baselineHiSpeed *
+                    (speedLines[j+1][0] - speedLines[j][0]);
+            }
+            gamePosition = accumulatedDist + speedLines[currSpeedLineIdx][2] * baselineHiSpeed *
+                (gameTiming - speedLines[currSpeedLineIdx][0]);
+            prevSpeedLineIdx = currSpeedLineIdx;
+
+            renderOneFrame(gamePosition, notesToRender, notes);
         }
     })();
 }
 
-function renderOneFrame(currentTiming, renderList, wholeList) {
+function renderOneFrame(gamePosition, notesToRender, notes) {
 
-    currentPosition += frameInterval;
     gameCanvas.getContext("2d").clearRect(0, 0, 1024, 682);
     
-    for (let index in renderList) {
+    for (let index in notesToRender) {
         var circleDiv = document.getElementById("circle" + renderList[index][1]);
         drawNote(512, 170,
             circleDiv.offsetLeft + circleDiv.offsetWidth / 2,
             circleDiv.offsetTop + circleDiv.offsetHeight / 2,
-            renderList[index][0], currentTiming
+            notesToRender[index][0], gameTiming
         );
     }
 }
 
 //center:(512px，170px), length:425px, diameter:136px
-function drawNote(startX, startY, destX, destY, noteTiming, currentTiming) {
+function drawNote(startX, startY, destX, destY, noteTiming, gameTiming) {
     let wholeDistance = Math.sqrt(Math.pow(destX - startX, 2) + Math.pow(destY - startY, 2));
-    let FromDestDistance = baselineHiSpeed * (currentTiming - noteTiming) / 1000;
+    let FromDestDistance = baselineHiSpeed * (gameTiming - noteTiming);
     let FromDestX = FromDestDistance / wholeDistance * (destX - startX);
     let FromDestY = FromDestDistance / wholeDistance * (destY - startY);
     let noteX = destX + FromDestX;
@@ -205,6 +246,28 @@ function drawNote(startX, startY, destX, destY, noteTiming, currentTiming) {
     let noteSize = 136 * noteSizeRatio;
     gameContext.drawImage(skinImage, 396, 15, 128, 128,
         noteLeft, noteTop, noteSize, noteSize);
+}
+
+function fromTimingToPosition(currentTiming, speedLines) {
+    let currSpeedLineIdx = 0;
+    let prevSpeedLineIdx = 0;
+    let accumulatedDist = 0;
+    let oneNote = new Array(3);
+    // get current speed line index(the speed line just before current note).
+    while (currSpeedLineIdx < speedLines.length && currentTiming > speedLines[currSpeedLineIdx][0]) {
+        currSpeedLineIdx ++;
+    }
+    currSpeedLineIdx --;
+    // accumulate distance(in hi-speed-based beatmap) from previous speed line to the current.
+    for (let j = prevSpeedLineIdx; j < currSpeedLineIdx; j ++) {
+        accumulatedDist += speedLines[j][2] * baselineHiSpeed *
+            (speedLines[j+1][0] - speedLines[j][0]);
+    }
+    // calculate the position of current note(in hi-speed-based beatmap) and push into array.
+    let position = accumulatedDist + speedLines[currSpeedLineIdx][2] * baselineHiSpeed *
+        (oneNote[0] - speedLines[currSpeedLineIdx][0]);
+    // record previous speed line for next loop.
+    prevSpeedLineIdx = currSpeedLineIdx;
 }
 
 function test() {

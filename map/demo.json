@@ -1,19 +1,21 @@
 {
-  "offset":-3000,
+  "offset":-300,
+  "originSpeedRatio":0.8,
   "speed":[
-    {"changeTiming":0,"speedRatio":1},
-    {"changeTiming":6000,"speedRatio":2},
-    {"changeTiming":10000,"speedRatio":0.5}
+    {"speedChangeTiming":6000,"speedRatio":2},
+    {"speedChangeTiming":10000,"speedRatio":0.5}
   ],
   "notes":[
-    {"type":0,"destination":1,"noteTiming":5000},
-    {"type":0,"destination":2,"noteTiming":7000},
+    {"type":0,"destination":1,"noteTiming":1000},
+    {"type":0,"destination":2,"noteTiming":2000},
     {"type":0,"destination":3,"noteTiming":4000},
-    {"type":0,"destination":4,"noteTiming":3000},
+    {"type":0,"destination":4,"noteTiming":5000},
+    {"type":0,"destination":1,"noteTiming":5000},
     {"type":0,"destination":5,"noteTiming":8000},
-    {"type":0,"destination":6,"noteTiming":12000},
-    {"type":0,"destination":7,"noteTiming":6000},
-    {"type":0,"destination":8,"noteTiming":1000},
-    {"type":0,"destination":9,"noteTiming":5000}
+    {"type":0,"destination":6,"noteTiming":9000},
+    {"type":0,"destination":1,"noteTiming":9000},
+    {"type":0,"destination":7,"noteTiming":11000},
+    {"type":0,"destination":8,"noteTiming":12000},
+    {"type":0,"destination":9,"noteTiming":16000}
   ]
 }
