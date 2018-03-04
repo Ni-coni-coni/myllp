@@ -1,16 +1,16 @@
 {
   "offset":-300,
-  "originSpeedRatio":1,
+  "originSpeedRatio":0.4,
   "speed":[
-    {"speedChangeTiming":1000,"speedRatio":2},
-    {"speedChangeTiming":2000,"speedRatio":0.5},
-    {"speedChangeTiming":3000,"speedRatio":2},
-    {"speedChangeTiming":4000,"speedRatio":0.5},
-    {"speedChangeTiming":5000,"speedRatio":2},
-    {"speedChangeTiming":6000,"speedRatio":0.5},
-    {"speedChangeTiming":7000,"speedRatio":2},
-    {"speedChangeTiming":8000,"speedRatio":0.5},
-    {"speedChangeTiming":9000,"speedRatio":2}
+    {"speedChangeTiming":1000,"speedRatio":0.5},
+    {"speedChangeTiming":2000,"speedRatio":0.7},
+    {"speedChangeTiming":3000,"speedRatio":0.9},
+    {"speedChangeTiming":4000,"speedRatio":1.1},
+    {"speedChangeTiming":5000,"speedRatio":1.3},
+    {"speedChangeTiming":6000,"speedRatio":1.5},
+    {"speedChangeTiming":7000,"speedRatio":1.7},
+    {"speedChangeTiming":8000,"speedRatio":1.9},
+    {"speedChangeTiming":9000,"speedRatio":2.1}
   ],
   "notes":[
     {"type":0,"destination":1,"noteTiming":500},

@@ -159,10 +159,10 @@ function addCircleDiv(centerX, centerY, diameter, id, className) {
     circleDiv.style.currentPosition = "absolute";
     circleDiv.style.display = "block";
     circleDiv.style.background = "yellow";
-    circleDiv.style.left = (centerX - diameter / 2) / 1024 * 100 + "%";
-    circleDiv.style.top = (centerY - diameter / 2) / 682 * 100 + "%";
     circleDiv.style.width = diameter / 1024 * 100 + "%";
     circleDiv.style.height = diameter / 682 * 100 + "%";
+    circleDiv.style.left = (centerX - diameter / 2) / 1024 * 100 + "%";
+    circleDiv.style.top = (centerY - diameter / 2) / 682 * 100 + "%";
     gameDiv.appendChild(circleDiv);
 }
 
@@ -172,17 +172,17 @@ function resize() {
     let h = window.innerHeight;
     if (h/w < ratio) {
         let gameDivWidth = h / ratio;
-        gameDiv.style.left = (w - gameDivWidth) / 2 + "px";
-        gameDiv.style.top = "0px";
         gameDiv.style.width = gameDivWidth + "px";
         gameDiv.style.height = h + "px";
+        gameDiv.style.left = (w - gameDivWidth) / 2 + "px";
+        gameDiv.style.top = "0px";
         globalRatio = h / 682;
     } else {
         let gameDivHeight = w * ratio;
-        gameDiv.style.left = "0px";
-        gameDiv.style.top = (h - gameDivHeight) / 2 + "px";
         gameDiv.style.width = w + "px";
         gameDiv.style.height = gameDivHeight + "px";
+        gameDiv.style.left = "0px";
+        gameDiv.style.top = (h - gameDivHeight) / 2 + "px";
         globalRatio = w / 1024;
     }
 
@@ -230,7 +230,6 @@ function renderGame() {
             then = now - (elapsed % frameInterval);
             gameTiming = now - startTiming;
 
-            console.log("gameTiming: " + gameTiming);
             // calculate current game position the same as the part of initialization.
             while (currSpeedLineIdx < speedLines.length && gameTiming > speedLines[currSpeedLineIdx][0]) {
                 currSpeedLineIdx ++;
@@ -244,7 +243,6 @@ function renderGame() {
                 (gameTiming - speedLines[currSpeedLineIdx][0]);
             prevSpeedLineIdx = currSpeedLineIdx;
 
-            console.log("gamePosition: " + gamePosition);
 
             renderOneFrame(gamePosition, notesToRender, notesBefore, notesAfter);
         }
@@ -318,12 +316,6 @@ function drawNote(startX, startY, destX, destY, notePosition, gamePosition) {
     let noteSize = 136 * noteSizeRatio;
     gameContext.drawImage(skinImage, 396, 15, 128, 128,
         noteLeft, noteTop, noteSize, noteSize);
-    console.log("startX: " + startX);
-    console.log("destX: " + destX);
-    console.log("startY: " + startY);
-    console.log("destY: " + destY);
-    console.log("noteX: " + noteX);
-    console.log("noteY: " + noteY);
 }
 
 function test() {
