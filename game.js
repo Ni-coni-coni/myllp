@@ -19,23 +19,27 @@ var gamePosition;
 var baselineHiSpeed = 0.2;
 var offset = 0;
 var renderRange = 425;
-
 var globalRatio = 1;
 
+var imagesReady = true;
+var mapReady = false;
+var audioReady = true;
+var touchAreaReady = true;
 
+main();
 
-initGame();
+function main() {
 
-window.onresize = function() {
-    resize();
-};
-
-function initGame() {
+    window.onresize = function() {
+        resize();
+    };
 
     initImages();
-    initMap();
-
-
+    initMap(); // load asynchronously
+    initAudio();
+    initTouchArea();
+    resize();
+    test();
 
 }
 
@@ -50,7 +54,7 @@ function initImages() {
         bgContext.drawImage(bgImage, 0, 0, bgCanvas.width, bgCanvas.height);
         bgContext.fillStyle = "rgb(10,0,20)";
         bgContext.fillRect(0, 0, 1024, 682);
-    }
+    };
     // init skin
     gameCanvas.width = 1024;
     gameCanvas.height = 682;
@@ -106,17 +110,16 @@ function initMap() {
             prevSpeedLineIdx = currSpeedLineIdx;
             oneNote[2] = mapData.notes[i].destination;
         }
-        console.log(speedLines)
-        console.log(notes)
-        initAudio();
-        initTouchArea();
-        resize();
-        test();
+        console.log(speedLines);
+        console.log(notes);
+
+
     }
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             if (xhr.status === 200) {
                 loadMap();
+                imagesReady = true;
             } else {
                 console.log("status = " + xhr.status);
             }
@@ -284,6 +287,7 @@ function renderOneFrame(gamePosition, notesToRender, notesBefore, notesAfter) {
     gameCanvas.getContext("2d").clearRect(0, 0, 1024, 682);
     
     for (let index in notesToRender) {
+        //今后用事先定义好的touchAreaCenterPoints[]
         var circleDiv = document.getElementById("circle" + notesToRender[index][2]);
         var startPoint = document.getElementById("startPoint");
         drawNote(startPoint.offsetLeft / globalRatio, startPoint.offsetTop / globalRatio,

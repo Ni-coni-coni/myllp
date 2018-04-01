@@ -31,7 +31,7 @@
     {"type":0,"destination":7,"noteTiming":3500},
     {"type":0,"destination":8,"noteTiming":3700},
     {"type":0,"destination":9,"noteTiming":3900},
-    {"type":0,"destination":1,"noteTiming":4100},
+    {"type":0,"destination":2,"noteTiming":4100},
     {"type":0,"destination":2,"noteTiming":4300},
     {"type":0,"destination":3,"noteTiming":4500},
     {"type":0,"destination":4,"noteTiming":4700},
