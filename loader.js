@@ -48,7 +48,6 @@ class Loader {
     }
 
     loadJson(src) {
-        console.log("111");
         if (typeof src == "string") {
             return new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
