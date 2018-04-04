@@ -122,20 +122,35 @@ class Game {
             this._addCircleDiv(centerX, centerY, diameter, "circle" + i, "circleDiv");
             this.startPoints[i] = [notesStartX, notesStartY];
         }
+        console.log(this.refs);
     }
 
     _addCircleDiv(centerX, centerY, diameter, id, className) {
         let circleDiv = document.createElement("div");
         circleDiv.className = className;
         circleDiv.id = id;
-        circleDiv.style.currentPosition = "absolute";
+        circleDiv.style.position = "absolute";
         circleDiv.style.display = "block";
         circleDiv.style.background = "yellow";
-        circleDiv.style.width = diameter / 1024 * 100 + "%";
-        circleDiv.style.height = diameter / 682 * 100 + "%";
-        circleDiv.style.left = (centerX - diameter / 2) / 1024 * 100 + "%";
-        circleDiv.style.top = (centerY - diameter / 2) / 682 * 100 + "%";
-        this.refs["gameDiv"].appendChild(circleDiv);
+        circleDiv.style.width = diameter / 1024 * 100 + "px";
+        circleDiv.style.height = diameter / 682 * 100 + "px";
+        circleDiv.style.left = (centerX - diameter / 2) / 1024 * 100 + "px";
+        circleDiv.style.top = (centerY - diameter / 2) / 682 * 100 + "px";
+        this.refs.gameDiv.style.background = "yellow";
+        this.refs.gameDiv.appendChild(circleDiv);
+        this.refs[id] = circleDiv;
+        circleDiv.addEventListener("mousedown", () => {
+            alert("aaa");
+        });
+        window.onmouseover = () => {
+            // alert("bbb");
+        };
+    }
+
+    _initMouseEvent(div) {
+        div.onmousedown = function() {
+            alert("aaa");
+        }
     }
 
     _getPosition(timing, speedLineArr, left, right, baselineHS) {
