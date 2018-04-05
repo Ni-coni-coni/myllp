@@ -5,10 +5,12 @@ class Game {
         this.refs = {
             gameDiv: document.getElementById("gameDiv"),
             bgCanvas: document.getElementById("bgCanvas"),
+            judgePosCanvas: document.getElementById("judgePosCanvas"),
             gameCanvas: document.getElementById("gameCanvas")
         };
 
         this.loader = new Loader();
+        this.judge = new Judge();
 
         this.music = null;
         this.bgImage = null;
@@ -18,15 +20,15 @@ class Game {
 
         this.fps = 60;
         this.frameInterval = 1000 / this.fps;
-        this.notesToRender = [[], [], [], [], [], [], [], [], []];
-        this.notesBefore = [[], [], [], [], [], [], [], [], []];
-        this.notesAfter = [[], [], [], [], [], [], [], [], []];
+        this.allNotes = [[], [], [], [], [], [], [], [], []];
+        this.allNoteIndices = [[], [], [], [], [], [], [], [], []]; // position从小到大所对应的note索引
         this.speedLines = [];
         this.baselineHiSpeed = 0.2;
         this.renderRange = 425;
         this.resizeRatio = 1;
         this.startPoints = [[], [], [], [], [], [], [], [], []];
-        this.touchDivCenters =[[], [], [], [], [], [], [], [], []];
+        this.judgeAreaCenters = [[], [], [], [], [], [], [], [], []];
+        this.judgeAreaRadii = new Array(9);
 
         this.gameTiming = null;
     }
@@ -44,7 +46,7 @@ class Game {
                 this.bgImage, 0, 0, 1024, 682);
             this.refs["bgCanvas"].getContext("2d").drawImage(
                 this.skinImage, 396, 15, 128, 128, 0, 0, 136, 136);
-            this.refs["bgCanvas"].getContext("2d").fillStyle = "rgb(10,0,20)";
+            this.refs["bgCanvas"].getContext("2d").fillStyle = "rgb(20,0,40)";
             this.refs["bgCanvas"].getContext("2d").fillRect(0, 0, 1024, 682);
             return this.loader.loadJson([
                 "map/demo.json"
@@ -54,102 +56,85 @@ class Game {
             // speedLines[i][1] means the speed ratio between i-th speed line and (i+1)-th or the end.
             // speedLines[i][2] means the position of i-th speed line.
             let position = 0;
-            for (let i = 0; i < beatmap.speed.length; i++) {
+            for (let i = 0; i < beatmap.speedLines.length; i++) {
                 let oneSpeedLine = new Array(3);
-                oneSpeedLine[0] = beatmap.speed[i].speedChangeTiming;
-                oneSpeedLine[1] = beatmap.speed[i].speedRatio;
+                oneSpeedLine[0] = beatmap.speedLines[i].speedChangeTiming;
+                oneSpeedLine[1] = beatmap.speedLines[i].speedRatio;
                 oneSpeedLine[2] = position;
                 this.speedLines.push(oneSpeedLine);
-                if (i < beatmap.speed.length - 1) {
+                if (i < beatmap.speedLines.length - 1) {
                     position += this.baselineHiSpeed * oneSpeedLine[1] * 
-                        (beatmap.speed[i+1].speedChangeTiming - oneSpeedLine[0]);
+                        (beatmap.speedLines[i+1].speedChangeTiming - oneSpeedLine[0]);
                 }
             }
             console.log(beatmap);
             // notesAfter[i][j][0] means the timing of j-th note of i-th destination,
             // notesAfter[i][j][1] means the position of j-th note of i-th destination,
             // notesAfter[i][j][2] means the type of j-th note of i-th destination.
-            let allNotes = [[], [], [], [], [], [], [], [], []];
-            let time = 0.0;
+            // notesAfter[i][j][3] means the existence of j-th note of i-th destination.
+            // notesAfter[i][j][4] means the position rank of j-th note of i-th destination.
+            let noteTiming, notePosition, noteType, isExist, destination;
             for (let noteObj of beatmap.notes) {
-                let oneNote = new Array(3);
-                oneNote[0] = noteObj.noteTiming;
-                oneNote[1] = this._getPosition(oneNote[0], this.speedLines,
+                noteTiming = noteObj.noteTiming;
+                notePosition = this._getPosition(noteTiming, this.speedLines,
                     0, this.speedLines.length-1, this.baselineHiSpeed);
-                oneNote[2] = parseInt(noteObj.type);
-                allNotes[parseInt(noteObj.destination)-1].push(oneNote);
+                noteType = parseInt(noteObj.noteType);
+                isExist = true;
+                destination = parseInt(noteObj.destination) - 1;
+                this.allNotes[destination].push([noteTiming, notePosition, noteType, isExist]);
+                let index = this.allNotes[destination].length - 1;
+                this.allNoteIndices[destination].push(index);
             }
-            console.log("check all speedlines and notes");
-            console.log(this.speedLines);
-            console.log(allNotes);
-            // 遍历一次notesAfter，把timing=0屏幕内的note放入notesToRender，已出屏幕的放入notesBefore
-            for (let i = 0; i < 9; i++) {
-                for (let note of allNotes[i]) {
-                    if (note[1] < -this.renderRange) {
-                        this.notesBefore[i].push(note);
-                    }
-                    else if (note[1] < this.renderRange) {
-                        this.notesToRender[i].push(note);
-                    }
-                    else {
-                        this.notesAfter[i].push(note);
-                    }
+            for (let i = 0; i < this.allNoteIndices.length; i++) {
+                this.allNoteIndices[i].sort((indexA, indexB) =>
+                this.allNotes[i][indexA][1] - this.allNotes[i][indexB][1]);
+            }
+            for (let i = 0; i < this.allNoteIndices.length; i++) {
+                for (let j = 0; j < this.allNoteIndices[i].length; j++) {
+                    this.allNotes[i][this.allNoteIndices[i][j]].push(j);
                 }
-                // 为了效率，将notesAfter[i]里的note颠倒顺序
-                this.notesAfter[i].reverse();
             }
-            console.log("check inited notes: before, toRender, after");
-            console.log(this.notesBefore);
-            console.log(this.notesToRender);
-            console.log(this.notesAfter);
-            this.initTouchArea();
+            console.log("check all speedLines, notes, indices and initial thresholds");
+            console.log(this.speedLines);
+            console.log(this.allNotes);
+            console.log(this.allNoteIndices);
+            console.log(this._getInitialThresholds());
+
+            this.initCoordinates();
+            this.renderJudgeAreas();
             return this.start();
         });
     }
 
-    initTouchArea() {
-        let notesStartX = 512;
-        let notesStartY = 170;
-        let distance = 425;
+    initCoordinates() {
+        let startX = 512;
+        let startY = 170;
+        let distance = this.renderRange;
         let pi = Math.PI;
         let angle = pi / 8;
-        let diameter = 136;
+        let radius = 68;
         let centerX, centerY;
         for (let i = 0; i < 9; i ++) {
-            centerX = notesStartX + distance * Math.cos(pi + angle * i);
-            centerY = notesStartY - distance * Math.sin(pi + angle * i);
-            this.touchDivCenters[i] = [centerX, centerY];
-            this._addCircleDiv(centerX, centerY, diameter, "circle" + i, "circleDiv");
-            this.startPoints[i] = [notesStartX, notesStartY];
+            centerX = startX + distance * Math.cos(pi + angle * i);
+            centerY = startY - distance * Math.sin(pi + angle * i);
+            this.judgeAreaCenters[i] = [centerX, centerY];
+            this.startPoints[i] = [startX, startY];
+            this.judgeAreaRadii[i] = radius;
         }
-        console.log(this.refs);
     }
 
-    _addCircleDiv(centerX, centerY, diameter, id, className) {
-        let circleDiv = document.createElement("div");
-        circleDiv.className = className;
-        circleDiv.id = id;
-        circleDiv.style.position = "absolute";
-        circleDiv.style.display = "block";
-        circleDiv.style.background = "yellow";
-        circleDiv.style.width = diameter / 1024 * 100 + "px";
-        circleDiv.style.height = diameter / 682 * 100 + "px";
-        circleDiv.style.left = (centerX - diameter / 2) / 1024 * 100 + "px";
-        circleDiv.style.top = (centerY - diameter / 2) / 682 * 100 + "px";
-        this.refs.gameDiv.style.background = "yellow";
-        this.refs.gameDiv.appendChild(circleDiv);
-        this.refs[id] = circleDiv;
-        circleDiv.addEventListener("mousedown", () => {
-            alert("aaa");
-        });
-        window.onmouseover = () => {
-            // alert("bbb");
-        };
-    }
-
-    _initMouseEvent(div) {
-        div.onmousedown = function() {
-            alert("aaa");
+    renderJudgeAreas() {
+        let cxt = this.refs.judgePosCanvas.getContext("2d");
+        let centerX, centerY, radius;
+        for (let i = 0; i < this.judgeAreaCenters.length; i++) {
+            centerX = this.judgeAreaCenters[i][0];
+            centerY = this.judgeAreaCenters[i][1];
+            radius = this.judgeAreaRadii[i];
+            cxt.beginPath();
+            cxt.arc(centerX, centerY, radius, 0, 360);
+            cxt.fillStyle = "yellow";
+            cxt.fill();
+            cxt.closePath();
         }
     }
 
@@ -168,16 +153,33 @@ class Game {
 
     }
 
+    _getInitialThresholds() {
+        let thresholdsIn = [];
+        let thresholdsOut = [];
+        for (let i = 0; i < this.allNoteIndices.length; i++) {
+            let thresholdIn = 0;
+            let thresholdOut = 0;
+            for (let index of this.allNoteIndices[i]) {
+                if (this.allNotes[i][index][1] < - this.renderRange) {
+                    thresholdIn ++; thresholdOut ++;
+                }
+                else if (this.allNotes[i][index][1] < this.renderRange) {
+                    thresholdIn ++;
+                }
+                else break;
+            }
+            thresholdsIn.push(thresholdIn);
+            thresholdsOut.push(thresholdOut);
+        }
+        return [thresholdsIn, thresholdsOut];
+    }
+
     start() {
         console.log("renderGame");
         this.gameTiming = 0;
         let gamePosition, lastGamePosition = 0;
-
-        // console.log("check notesAfter: ");
-        // console.log(this.notesAfter);
-        // console.log("check notesToRender: ");
-        // console.log(this.notesToRender);
-
+        let thresholds = this._getInitialThresholds();
+        
         let frameCount = 0;
         let now, elapsed;
         let startTiming = Date.now();
@@ -193,56 +195,60 @@ class Game {
                 that.gameTiming = now - startTiming;
                 gamePosition = that._getPosition(that.gameTiming, that.speedLines,
                     0, that.speedLines.length-1, that.baselineHiSpeed);
-                that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange,
-                    that.notesToRender, that.notesBefore, that.notesAfter);
+                that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
                 lastGamePosition = gamePosition;
             }
         })();
     }
 
-    _renderOneFrame(gamePosition, lastGamePosition, renderRange, notesToRender, notesBefore, notesAfter) {
+    _renderOneFrame(gamePosition, lastGamePosition, renderRange, thresholds) {
+        let indexIn, indexOut;
+        let notePos;
         if (gamePosition > lastGamePosition) {
             for (let i = 0; i < 9; i++) {
-                // from notesToRender[] to notesBefore[]
-                for (let j = 0; j < notesToRender[i].length; j++) {
-                    if (notesToRender[i][j][1] < gamePosition - renderRange) {
-                        notesBefore[i].push(notesToRender[i].shift());
+                indexIn = thresholds[0][i];
+                for (let j = indexIn; j < this.allNoteIndices[i].length; j++) {
+                    notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
+                    if (notePos < gamePosition + renderRange) {
+                        thresholds[0][i]++;
                     } else break;
                 }
-                // from notesAfter[] to notesToRender[]
-                for (let j = notesAfter[i].length - 1; j >= 0; j--) {
-                    if (notesAfter[i][j][1] < gamePosition + renderRange) {
-                        notesToRender[i].push(notesAfter[i].pop());
+                indexOut = thresholds[1][i];
+                for (let j = indexOut; j < this.allNoteIndices[i].length; j++) {
+                    notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
+                    if (notePos < gamePosition - renderRange) {
+                        thresholds[1][i]++;
                     } else break;
                 }
             }
         }
-        /*目前负速度线尚存问题
         else {
             for (let i = 0; i < 9; i++) {
-                // from notesToRender[] to notesAfter[]
-                for (let j = notesToRender[i].length - 1; j >= 0; j--) {
-                    if (notesToRender[i][j][1] > gamePosition + renderRange) {
-                        notesAfter[i].push(notesToRender[i].pop());
+                indexIn = thresholds[0][i];
+                for (let j = indexIn - 1; j >= 0; j--) {
+                    notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
+                    if (notePos > gamePosition + renderRange) {
+                        thresholds[0][i]--;
                     } else break;
                 }
-                // from notesBefore[] to notesToRender[]
-                for (let j = notesBefore[i].length - 1; j >= 0; j--) {
-                    if (notesBefore[i][j][1] > gamePosition - renderRange) {
-                        notesToRender[i].unshift(notesBefore[i].pop());
+                indexOut = thresholds[1][i];
+                for (let j = indexOut - 1; j >= 0; j--) {
+                    notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
+                    if (notePos > gamePosition - renderRange) {
+                        thresholds[1][i]--;
                     } else break;
                 }
             }
         }
-        */
 
         this.refs["gameCanvas"].getContext("2d").clearRect(0, 0, 1024, 682);
 
         for (let i = 0; i < 9; i++) {
-            for (let note of notesToRender[i]) {
+            for (let j = thresholds[1][i]; j < thresholds[0][i]; j++) {
+                notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
                 this._drawNote(this.startPoints[i][0], this.startPoints[i][1],
-                    this.touchDivCenters[i][0], this.touchDivCenters[i][1],
-                    note[1], gamePosition, renderRange);
+                    this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                    notePos, gamePosition, renderRange);
             }
         }
         
