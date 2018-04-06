@@ -15,6 +15,7 @@ class Game {
         this.music = null;
         this.bgImage = null;
         this.skinImage = null;
+        this.startTiming = null;
 
         this.status = null;
 
@@ -29,6 +30,7 @@ class Game {
         this.startPoints = [[], [], [], [], [], [], [], [], []];
         this.judgeAreaCenters = [[], [], [], [], [], [], [], [], []];
         this.judgeAreaRadii = new Array(9);
+        this.judgeIndices = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
         this.gameTiming = null;
     }
@@ -49,7 +51,7 @@ class Game {
             this.refs["bgCanvas"].getContext("2d").fillStyle = "rgb(20,0,40)";
             this.refs["bgCanvas"].getContext("2d").fillRect(0, 0, 1024, 682);
             return this.loader.loadJson([
-                "map/demo.json"
+                "map/demo2.json"
             ]);
         }).then(([beatmap]) => {
             // speedLines[i][0] means the timing of i-th speed line,
@@ -138,6 +140,32 @@ class Game {
         }
     }
 
+    addMouseEventListener() {
+        this.refs.gameCanvas.addEventListener("mousedown", (e) => {
+            let touchTiming = Date.now() - this.startTiming;
+            let canvasX = e.offsetX / this.resizeRatio;
+            let canvasY = e.offsetY / this.resizeRatio;
+            let judgement;
+            // console.log("x:" + canvasX);
+            // console.log("y:" + canvasY);
+            let judgeAreas = this.judge.isInJudgeArea(this.judgeAreaCenters, this.judgeAreaRadii,
+                canvasX, canvasY);
+            if (judgeAreas.length != 0) {
+                for (let i of judgeAreas) {
+                    if (this.judgeIndices[i] < this.allNotes[i].length) {
+                        judgement = this.judge.getJudgement(touchTiming,
+                            this.allNotes[i][this.judgeIndices[i]][0]);
+                        console.log(judgement);
+                        if (judgement != null) {
+                            this.allNotes[i][this.judgeIndices[i]][3] = false;
+                            this.judgeIndices[i]++;
+                        }
+                    }
+                }
+            }
+        })
+    }
+
     _getPosition(timing, speedLineArr, left, right, baselineHS) {
         if (left == right) {
             return baselineHS * (timing - speedLineArr[left][0]) * speedLineArr[left][1] +
@@ -174,16 +202,28 @@ class Game {
         return [thresholdsIn, thresholdsOut];
     }
 
+    _updateJudgeIndices(judgeIndices, gameTiming) {
+        for (let i = 0; i < this.allNotes.length; i++) {
+            for (let j = judgeIndices[i]; j < this.allNotes[i].length; j++) {
+                if (gameTiming - this.allNotes[i][j][0] > this.judge.good) {
+                    judgeIndices[i]++;
+                }
+                else break;
+            }
+        }
+    }
+
     start() {
         console.log("renderGame");
         this.gameTiming = 0;
         let gamePosition, lastGamePosition = 0;
         let thresholds = this._getInitialThresholds();
-        
+        this.addMouseEventListener();
+
         let frameCount = 0;
         let now, elapsed;
-        let startTiming = Date.now();
-        let then = startTiming;
+        this.startTiming = Date.now();
+        let then = this.startTiming;
         let that = this;
         (function animate() {
             requestAnimationFrame(animate);
@@ -192,9 +232,10 @@ class Game {
             if (elapsed > that.frameInterval) {
                 frameCount ++;
                 then = now - (elapsed % that.frameInterval);
-                that.gameTiming = now - startTiming;
+                that.gameTiming = now - that.startTiming;
                 gamePosition = that._getPosition(that.gameTiming, that.speedLines,
                     0, that.speedLines.length-1, that.baselineHiSpeed);
+                that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
                 that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
                 lastGamePosition = gamePosition;
             }
@@ -245,10 +286,12 @@ class Game {
 
         for (let i = 0; i < 9; i++) {
             for (let j = thresholds[1][i]; j < thresholds[0][i]; j++) {
-                notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
-                this._drawNote(this.startPoints[i][0], this.startPoints[i][1],
-                    this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
-                    notePos, gamePosition, renderRange);
+                if (this.allNotes[i][this.allNoteIndices[i][j]][3]) {
+                    notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
+                    this._drawNote(this.startPoints[i][0], this.startPoints[i][1],
+                        this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                        notePos, gamePosition, renderRange);
+                }
             }
         }
         
@@ -259,9 +302,6 @@ class Game {
         let noteX = startX + (destX - startX) * finishedDistanceRatio;
         let noteY = startY + (destY - startY) * finishedDistanceRatio;
         let noteSizeRatio = finishedDistanceRatio > 1 ? 1 : finishedDistanceRatio;
-        // if (noteSizeRatio < 0) {
-        //     noteSizeRatio = 0;
-        // } //fix afterwards
         let noteLeft = noteX - 68 * noteSizeRatio;
         let noteTop = noteY - 68 * noteSizeRatio;
         let noteSize = 136 * noteSizeRatio;

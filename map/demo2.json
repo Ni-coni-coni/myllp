@@ -1,0 +1,36 @@
+{
+  "speedLines":[
+    {"speedChangeTiming":1000,"speedRatio":1},
+    {"speedChangeTiming":1500,"speedRatio":1.5},
+    {"speedChangeTiming":2000,"speedRatio":2},
+    {"speedChangeTiming":2500,"speedRatio":2.5},
+    {"speedChangeTiming":3000,"speedRatio":3},
+    {"speedChangeTiming":3500,"speedRatio":3.5},
+    {"speedChangeTiming":4000,"speedRatio":4},
+    {"speedChangeTiming":4500,"speedRatio":4.5},
+    {"speedChangeTiming":5000,"speedRatio":5}
+  ],
+  "notes":[
+    {"noteType":0,"destination":7,"noteTiming":1300},
+    {"noteType":0,"destination":7,"noteTiming":1400},
+    {"noteType":0,"destination":7,"noteTiming":1500},
+    {"noteType":0,"destination":7,"noteTiming":1600},
+    {"noteType":0,"destination":7,"noteTiming":1700},
+    {"noteType":0,"destination":7,"noteTiming":2300},
+    {"noteType":0,"destination":7,"noteTiming":2400},
+    {"noteType":0,"destination":7,"noteTiming":2500},
+    {"noteType":0,"destination":7,"noteTiming":2600},
+    {"noteType":0,"destination":7,"noteTiming":2700},
+    {"noteType":0,"destination":7,"noteTiming":3300},
+    {"noteType":0,"destination":7,"noteTiming":3400},
+    {"noteType":0,"destination":7,"noteTiming":3500},
+    {"noteType":0,"destination":7,"noteTiming":3600},
+    {"noteType":0,"destination":7,"noteTiming":3700},
+    {"noteType":0,"destination":7,"noteTiming":4300},
+    {"noteType":0,"destination":7,"noteTiming":4400},
+    {"noteType":0,"destination":7,"noteTiming":4500},
+    {"noteType":0,"destination":7,"noteTiming":4600},
+    {"noteType":0,"destination":7,"noteTiming":4700}
+
+  ]
+}
