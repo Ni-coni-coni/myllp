@@ -13,18 +13,19 @@ class Game {
         this.judge = new Judge();
 
         this.music = null;
+        this.soundEffects = {};
         this.bgImage = null;
         this.skinImage = null;
         this.startTiming = null;
 
         this.status = null;
 
-        this.fps = 60;
+        this.fps = 30;
         this.frameInterval = 1000 / this.fps;
         this.allNotes = [[], [], [], [], [], [], [], [], []];
         this.allNoteIndices = [[], [], [], [], [], [], [], [], []]; // position从小到大所对应的note索引
         this.speedLines = [];
-        this.baselineHiSpeed = 0.2;
+        this.baselineHiSpeed = 0.5;
         this.renderRange = 425;
         this.resizeRatio = 1;
         this.startPoints = [[], [], [], [], [], [], [], [], []];
@@ -50,6 +51,15 @@ class Game {
                 this.skinImage, 396, 15, 128, 128, 0, 0, 136, 136);
             this.refs["bgCanvas"].getContext("2d").fillStyle = "rgb(20,0,40)";
             this.refs["bgCanvas"].getContext("2d").fillRect(0, 0, 1024, 682);
+            return this.loader.loadSound([
+                "sound/perfect.mp3",
+                "sound/great.mp3",
+                "sound/good.mp3"
+            ]);
+        }).then(([perfect, great, good]) => {
+            this.soundEffects.perfect = perfect;
+            this.soundEffects.great = great;
+            this.soundEffects.good = good;
             return this.loader.loadJson([
                 "map/demo2.json"
             ]);
@@ -70,11 +80,11 @@ class Game {
                 }
             }
             console.log(beatmap);
-            // notesAfter[i][j][0] means the timing of j-th note of i-th destination,
-            // notesAfter[i][j][1] means the position of j-th note of i-th destination,
-            // notesAfter[i][j][2] means the type of j-th note of i-th destination.
-            // notesAfter[i][j][3] means the existence of j-th note of i-th destination.
-            // notesAfter[i][j][4] means the position rank of j-th note of i-th destination.
+            // allNotes[i][j][0] means the timing of j-th note of i-th destination,
+            // allNotes[i][j][1] means the position of j-th note of i-th destination,
+            // allNotes[i][j][2] means the type of j-th note of i-th destination.
+            // allNotes[i][j][3] means the existence of j-th note of i-th destination.
+            // allNotes[i][j][4] means the position rank of j-th note of i-th destination.
             let noteTiming, notePosition, noteType, isExist, destination;
             for (let noteObj of beatmap.notes) {
                 noteTiming = noteObj.noteTiming;
@@ -155,6 +165,7 @@ class Game {
                     if (this.judgeIndices[i] < this.allNotes[i].length) {
                         judgement = this.judge.getJudgement(touchTiming,
                             this.allNotes[i][this.judgeIndices[i]][0]);
+                        this._executeJudgeEffect(judgement);
                         console.log(judgement);
                         if (judgement != null) {
                             this.allNotes[i][this.judgeIndices[i]][3] = false;
@@ -164,6 +175,48 @@ class Game {
                 }
             }
         })
+    }
+
+    addTouchEventListener() {
+        this.refs.gameCanvas.addEventListener("touchstart", (e) => {
+            let touchTiming = Date.now() - this.startTiming;
+            let canvasX = e.offsetX / this.resizeRatio;
+            let canvasY = e.offsetY / this.resizeRatio;
+            let judgement;
+            // console.log("x:" + canvasX);
+            // console.log("y:" + canvasY);
+            let judgeAreas = this.judge.isInJudgeArea(this.judgeAreaCenters, this.judgeAreaRadii,
+                canvasX, canvasY);
+            if (judgeAreas.length != 0) {
+                for (let i of judgeAreas) {
+                    if (this.judgeIndices[i] < this.allNotes[i].length) {
+                        judgement = this.judge.getJudgement(touchTiming,
+                            this.allNotes[i][this.judgeIndices[i]][0]);
+                        this._executeJudgeEffect(judgement);
+                        if (judgement != null) {
+                            this.allNotes[i][this.judgeIndices[i]][3] = false;
+                            this.judgeIndices[i]++;
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    _executeJudgeEffect(judgement) {
+        switch (judgement) {
+            case "perfect":
+                this.soundEffects.perfect.play();
+                break;
+            case "great":
+                this.soundEffects.great.play();
+                break;
+            case "good":
+                this.soundEffects.good.play();
+                break;
+            default:
+                break;
+        }
     }
 
     _getPosition(timing, speedLineArr, left, right, baselineHS) {
@@ -219,9 +272,11 @@ class Game {
         let gamePosition, lastGamePosition = 0;
         let thresholds = this._getInitialThresholds();
         this.addMouseEventListener();
+        this.addTouchEventListener();
 
         let frameCount = 0;
         let now, elapsed;
+        // this.music.play();
         this.startTiming = Date.now();
         let then = this.startTiming;
         let that = this;
@@ -229,7 +284,7 @@ class Game {
             requestAnimationFrame(animate);
             now = Date.now();
             elapsed = now - then;
-            if (elapsed > that.frameInterval) {
+            //if (elapsed > that.frameInterval) {
                 frameCount ++;
                 then = now - (elapsed % that.frameInterval);
                 that.gameTiming = now - that.startTiming;
@@ -238,7 +293,7 @@ class Game {
                 that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
                 that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
                 lastGamePosition = gamePosition;
-            }
+            //}
         })();
     }
 

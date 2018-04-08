@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="37597c6e-7d0d-4ebf-88c1-584c93689bea" name="localhost" url="http://192.168.3.10:8080">
+        <fileTransfer mountedRoot="C:\Users\Ushio\WebstormProjects\myllp" accessType="MOUNT" />
+      </webServer>
+    </option>
+  </component>
+</project>
