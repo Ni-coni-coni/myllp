@@ -75,7 +75,7 @@ class Game {
                 oneSpeedLine[2] = position;
                 this.speedLines.push(oneSpeedLine);
                 if (i < beatmap.speedLines.length - 1) {
-                    position += this.baselineHiSpeed * oneSpeedLine[1] * 
+                    position += this.baselineHiSpeed * oneSpeedLine[1] *
                         (beatmap.speedLines[i+1].speedChangeTiming - oneSpeedLine[0]);
                 }
             }
@@ -285,14 +285,14 @@ class Game {
             now = Date.now();
             elapsed = now - then;
             //if (elapsed > that.frameInterval) {
-                frameCount ++;
-                then = now - (elapsed % that.frameInterval);
-                that.gameTiming = now - that.startTiming;
-                gamePosition = that._getPosition(that.gameTiming, that.speedLines,
-                    0, that.speedLines.length-1, that.baselineHiSpeed);
-                that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
-                that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
-                lastGamePosition = gamePosition;
+            frameCount ++;
+            then = now - (elapsed % that.frameInterval);
+            that.gameTiming = now - that.startTiming;
+            gamePosition = that._getPosition(that.gameTiming, that.speedLines,
+                0, that.speedLines.length-1, that.baselineHiSpeed);
+            that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
+            that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
+            lastGamePosition = gamePosition;
             //}
         })();
     }
@@ -349,7 +349,7 @@ class Game {
                 }
             }
         }
-        
+
     }
 
     _drawNote(startX, startY, destX, destY, notePosition, gamePosition, renderRange) {
