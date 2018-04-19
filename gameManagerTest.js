@@ -66,22 +66,21 @@ class Game {
             this.soundEffects.great = great;
             this.soundEffects.good = good;
             return this.loader.loadJson([
-                "map/demo.json"
+                "map/noteDemo.json"
             ]);
         }).then(([beatmap]) => {
             // speedLines[i][0] means the timing of i-th speed line,
             // speedLines[i][1] means the speed ratio between i-th speed line and (i+1)-th or the end.
             // speedLines[i][2] means the position of i-th speed line.
             let position = 0;
+            let speedChangeTiming, speedRatio;
             for (let i = 0; i < beatmap.speedLines.length; i++) {
-                let oneSpeedLine = new Array(3);
-                oneSpeedLine[0] = beatmap.speedLines[i].speedChangeTiming;
-                oneSpeedLine[1] = beatmap.speedLines[i].speedRatio;
-                oneSpeedLine[2] = position;
-                this.speedLines.push(oneSpeedLine);
+                speedChangeTiming = beatmap.speedLines[i][0];
+                speedRatio = beatmap.speedLines[i][1];
+                this.speedLines.push([speedChangeTiming, speedRatio, position]);
                 if (i < beatmap.speedLines.length - 1) {
-                    position += this.baselineHiSpeed * oneSpeedLine[1] *
-                        (beatmap.speedLines[i+1].speedChangeTiming - oneSpeedLine[0]);
+                    position += this.baselineHiSpeed * speedRatio *
+                        (beatmap.speedLines[i+1][0] - speedChangeTiming);
                 }
             }
             console.log(beatmap);
@@ -91,20 +90,21 @@ class Game {
             // allNotes[i][j][3] means the existence of j-th note of i-th destination.
             // allNotes[i][j][4] means the position rank of j-th note of i-th destination.
             let noteTiming, notePosition, noteType, isExist, destination;
-            for (let noteObj of beatmap.notes) {
-                noteTiming = noteObj.noteTiming;
-                notePosition = this._getPosition(noteTiming, this.speedLines,
-                    0, this.speedLines.length-1, this.baselineHiSpeed);
-                noteType = parseInt(noteObj.noteType);
-                isExist = true;
-                destination = parseInt(noteObj.destination) - 1;
-                this.allNotes[destination].push([noteTiming, notePosition, noteType, isExist]);
-                let index = this.allNotes[destination].length - 1;
-                this.allNoteIndices[destination].push(index);
+            for (let i = 0; i < 9; i++) {  // todo
+                for (let j = 0; j < beatmap.notes[i].length; j++) {
+                    noteTiming = beatmap.notes[i][j][0];
+                    notePosition = this._getPosition(noteTiming, this.speedLines,
+                        0, this.speedLines.length-1, this.baselineHiSpeed);
+                    noteType = beatmap.notes[i][j][1];
+                    isExist = true;
+                    this.allNotes[i].push([noteTiming, notePosition, noteType, isExist]);
+                    let index = this.allNotes[i].length - 1;
+                    this.allNoteIndices[i].push(index);
+                }
             }
             for (let i = 0; i < this.allNoteIndices.length; i++) {
                 this.allNoteIndices[i].sort((indexA, indexB) =>
-                this.allNotes[i][indexA][1] - this.allNotes[i][indexB][1]);
+                    this.allNotes[i][indexA][1] - this.allNotes[i][indexB][1]);
             }
             for (let i = 0; i < this.allNoteIndices.length; i++) {
                 for (let j = 0; j < this.allNoteIndices[i].length; j++) {

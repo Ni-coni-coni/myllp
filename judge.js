@@ -6,14 +6,22 @@ class Judge {
         this.good = 120;
     }
 
-    isInJudgeArea(judgeAreaCenters, radii, canvasX, canvasY) {
+    getJudgeAreas(judgeAreaCenters, radii, canvasTouchCoords) {
         let judgeAreas = [];
+        let oneHot = [false, false, false, false, false, false, false, false, false];
         let dX, dY, distance;
         for (let i = 0; i < judgeAreaCenters.length; i++) {
-            dX = canvasX - judgeAreaCenters[i][0];
-            dY = canvasY - judgeAreaCenters[i][1];
-            distance = Math.pow(dX*dX + dY*dY, 0.5);
-            if (distance < radii[i]) judgeAreas.push(i);
+            for (let touch of canvasTouchCoords) {
+                dX = touch[0] - judgeAreaCenters[i][0];
+                dY = touch[1] - judgeAreaCenters[i][1];
+                distance = Math.pow(dX*dX + dY*dY, 0.5);
+                if (distance < radii[i]) {
+                    oneHot[i] = true;
+                }
+            }
+        }
+        for (let i = 0; i < judgeAreaCenters.length; i++) {
+            if (oneHot[i] == true) judgeAreas.push(i);
         }
         return judgeAreas;
     }

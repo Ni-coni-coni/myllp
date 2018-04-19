@@ -4,6 +4,10 @@ html,body{height:100%;width:100%;}
 
 #gameDiv{position:absolute;display:block;}
 
+#fpsCounterDiv{position:absolute;background-color:bisque;z-index:100}
+
+#debugDiv{position:absolute;background-color:bisque;z-index:99;left:50%}
+
 #bgCanvas{position:absolute;width:100%;height:100%;display:block;z-index:0}
 
 #judgePosCanvas{position:absolute;width:100%;height:100%;display:block;z-index:1}
