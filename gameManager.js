@@ -2,6 +2,16 @@ class Game {
 
     constructor() {
 
+        this.assets = {
+            bg: "image/bg.jpg",
+            skin: "image/skin.png",
+            perfect: "sound/perfect.mp3",
+            great: "sound/great.mp3",
+            good: "sound/good.mp3",
+            music: "music/excalibur.mp3",
+            beatmap: "map/converterTest.json"
+        };
+
         this.refs = {
             gameDiv: document.getElementById("gameDiv"),
             fpsCounterDiv: document.getElementById("fpsCounterDiv"),
@@ -16,13 +26,16 @@ class Game {
 
         this.music = null;
         this.soundEffects = {};
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.audioContext = new AudioContext();
+
         this.bgImage = null;
         this.skinImage = null;
         this.startTiming = null;
 
         this.status = null;
 
-        this.fps = 30;
+        this.fps = 60;
         this.frameInterval = 1000 / this.fps;
         this.allNotes = [[], [], [], [], [], [], [], [], []];
         this.allNoteIndices = [[], [], [], [], [], [], [], [], []]; // position从小到大所对应的note索引
@@ -45,8 +58,8 @@ class Game {
         window.onresize = () => this._resize();
         this._resize();
         this.loader.loadImage([
-            "image/bg.jpg",
-            "image/skin.png"
+            this.assets.bg,
+            this.assets.skin
         ]).then(([bg, skin]) => {
             this.bgImage = bg;
             this.skinImage = skin;
@@ -57,54 +70,56 @@ class Game {
             this.refs["bgCanvas"].getContext("2d").fillStyle = "rgb(20,0,40)";
             this.refs["bgCanvas"].getContext("2d").fillRect(0, 0, 1024, 682);
             return this.loader.loadSound([
-                "sound/perfect.mp3",
-                "sound/great.mp3",
-                "sound/good.mp3"
+                this.assets.perfect,
+                this.assets.great,
+                this.assets.good,
+                this.assets.music
             ]);
-        }).then(([perfect, great, good]) => {
+        }).then(([perfect, great, good, music]) => {
             this.soundEffects.perfect = perfect;
             this.soundEffects.great = great;
             this.soundEffects.good = good;
+            this.music = music;
             return this.loader.loadJson([
-                "map/demo.json"
+                this.assets.beatmap
             ]);
         }).then(([beatmap]) => {
             // speedLines[i][0] means the timing of i-th speed line,
             // speedLines[i][1] means the speed ratio between i-th speed line and (i+1)-th or the end.
             // speedLines[i][2] means the position of i-th speed line.
             let position = 0;
+            let speedChangeTiming, speedRatio;
             for (let i = 0; i < beatmap.speedLines.length; i++) {
-                let oneSpeedLine = new Array(3);
-                oneSpeedLine[0] = beatmap.speedLines[i].speedChangeTiming;
-                oneSpeedLine[1] = beatmap.speedLines[i].speedRatio;
-                oneSpeedLine[2] = position;
-                this.speedLines.push(oneSpeedLine);
+                speedChangeTiming = beatmap.speedLines[i][0];
+                speedRatio = beatmap.speedLines[i][1];
+                this.speedLines.push([speedChangeTiming, speedRatio, position]);
                 if (i < beatmap.speedLines.length - 1) {
-                    position += this.baselineHiSpeed * oneSpeedLine[1] *
-                        (beatmap.speedLines[i+1].speedChangeTiming - oneSpeedLine[0]);
+                    position += this.baselineHiSpeed * speedRatio *
+                        (beatmap.speedLines[i+1][0] - speedChangeTiming);
                 }
             }
             console.log(beatmap);
-            // allNotes[i][j][0] means the timing of j-th note of i-th destination,
-            // allNotes[i][j][1] means the position of j-th note of i-th destination,
-            // allNotes[i][j][2] means the type of j-th note of i-th destination.
-            // allNotes[i][j][3] means the existence of j-th note of i-th destination.
-            // allNotes[i][j][4] means the position rank of j-th note of i-th destination.
-            let noteTiming, notePosition, noteType, isExist, destination;
-            for (let noteObj of beatmap.notes) {
-                noteTiming = noteObj.noteTiming;
-                notePosition = this._getPosition(noteTiming, this.speedLines,
-                    0, this.speedLines.length-1, this.baselineHiSpeed);
-                noteType = parseInt(noteObj.noteType);
-                isExist = true;
-                destination = parseInt(noteObj.destination) - 1;
-                this.allNotes[destination].push([noteTiming, notePosition, noteType, isExist]);
-                let index = this.allNotes[destination].length - 1;
-                this.allNoteIndices[destination].push(index);
+            // allNotes[i][j][0] means the timing of j-th note of i-th lane,
+            // allNotes[i][j][1] means the position of j-th note of i-th lane,
+            // allNotes[i][j][2] means the type of j-th note of i-th lane.
+            // allNotes[i][j][3] means the existence of j-th note of i-th lane.
+            // allNotes[i][j][4] means the position rank of j-th note of i-th lane.
+            let noteTiming, notePosition, noteType, isExist;
+            for (let i = 0; i < 9; i++) {  // todo
+                for (let j = 0; j < beatmap.notes[i].length; j++) {
+                    noteTiming = beatmap.notes[i][j][0];
+                    notePosition = this._getPosition(noteTiming, this.speedLines,
+                        0, this.speedLines.length-1, this.baselineHiSpeed);
+                    noteType = beatmap.notes[i][j][1];
+                    isExist = true;
+                    this.allNotes[i].push([noteTiming, notePosition, noteType, isExist]);
+                    let index = this.allNotes[i].length - 1;
+                    this.allNoteIndices[i].push(index);
+                }
             }
             for (let i = 0; i < this.allNoteIndices.length; i++) {
                 this.allNoteIndices[i].sort((indexA, indexB) =>
-                this.allNotes[i][indexA][1] - this.allNotes[i][indexB][1]);
+                    this.allNotes[i][indexA][1] - this.allNotes[i][indexB][1]);
             }
             for (let i = 0; i < this.allNoteIndices.length; i++) {
                 for (let j = 0; j < this.allNoteIndices[i].length; j++) {
@@ -223,7 +238,7 @@ class Game {
                 canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
                 canvasTouchCoords.push([canvasX, canvasY]);
             }
-            this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
+            // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
             let judgement;
             let judgeAreas = this.judge.getJudgeAreas(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
@@ -255,7 +270,7 @@ class Game {
                 canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
                 canvasTouchCoords.push([canvasX, canvasY]);
             }
-            this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
+            // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
             let judgement;
             let judgeAreas = this.judge.getJudgeAreas(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
@@ -278,13 +293,13 @@ class Game {
     _executeJudgeEffect(judgement) {
         switch (judgement) {
             case "perfect":
-                this.soundEffects.perfect.play();
+                this.playSound(this.soundEffects.perfect);
                 break;
             case "great":
-                this.soundEffects.great.play();
+                this.playSound(this.soundEffects.great);
                 break;
             case "good":
-                this.soundEffects.good.play();
+                this.playSound(this.soundEffects.good);
                 break;
             default:
                 break;
@@ -340,10 +355,12 @@ class Game {
 
     start() {
         console.log("renderGame");
+        this.playSound(this.music);
         this.gameTiming = 0;
         let gamePosition, lastGamePosition = 0;
         let thresholds = this._getInitialThresholds(); // 屏幕边界处的note索引
         //this.addMouseMoveEventListener();
+        this.addTouchEventListener();
         this.addTouchMoveEventListener();
 
         let frameCount = 0;
@@ -360,24 +377,24 @@ class Game {
             requestAnimationFrame(animate);
             now = Date.now();
             elapsed = now - then;
-            //if (elapsed > that.frameInterval) {
-            frameCount ++;
-            if (now - lastFPSCountTiming > 1000) {
-                let fps = (frameCount - lastFrameCount) * 1000 / (now - lastFPSCountTiming);
-                //console.log(fps);
-                that.refs.fpsCounterDiv.innerText = "fps:" + fps;
+            if (elapsed > that.frameInterval) {
+                frameCount ++;
+                if (now - lastFPSCountTiming > 1000) {
+                    let fps = (frameCount - lastFrameCount) * 1000 / (now - lastFPSCountTiming);
+                    //console.log(fps);
+                    that.refs.fpsCounterDiv.innerText = "fps:" + fps;
 
-                lastFrameCount = frameCount;
-                lastFPSCountTiming = now;
+                    lastFrameCount = frameCount;
+                    lastFPSCountTiming = now;
+                }
+                then = now - (elapsed % that.frameInterval);
+                that.gameTiming = now - that.startTiming;
+                gamePosition = that._getPosition(that.gameTiming, that.speedLines,
+                    0, that.speedLines.length-1, that.baselineHiSpeed);
+                that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
+                that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
+                lastGamePosition = gamePosition;
             }
-            then = now - (elapsed % that.frameInterval);
-            that.gameTiming = now - that.startTiming;
-            gamePosition = that._getPosition(that.gameTiming, that.speedLines,
-                0, that.speedLines.length-1, that.baselineHiSpeed);
-            that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
-            that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
-            lastGamePosition = gamePosition;
-            //}
         })();
     }
 
@@ -474,6 +491,13 @@ class Game {
             this.canvasOffsetTop = (h - gameDivHeight) / 2;
             this.resizeRatio = w / 1024;
         }
+    }
+
+    playSound(buffer) {
+        let source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this.audioContext.destination);
+        source.start(0);
     }
 
 }

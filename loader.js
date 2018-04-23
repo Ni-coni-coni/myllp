@@ -26,12 +26,21 @@ class Loader {
     loadSound(src) {
         if (typeof src == "string") {
             return new Promise((resolve, reject) => {
-                let sound = new Howl({
-                    src: [src],
-                    onload: () => resolve(sound),
-                    onloaderror: error => reject(error)
-                });
-            })
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                let context = new AudioContext();
+                let xhr = new XMLHttpRequest();
+                xhr.open("get", src);
+                xhr.responseType = "arraybuffer";
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        context.decodeAudioData(xhr.response, buffer => {
+                            resolve(buffer);
+                        });
+                    }
+                };
+                xhr.onerror = error => reject(error);
+                xhr.send();
+            });
         }
         else if (typeof src == "object" && src instanceof Array) {
             let promises = [];
