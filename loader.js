@@ -26,7 +26,7 @@ class Loader {
     loadSound(src) {
         if (typeof src == "string") {
             return new Promise((resolve, reject) => {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                //window.AudioContext = window.AudioContext || window.webkitAudioContext;
                 let context = new AudioContext();
                 let xhr = new XMLHttpRequest();
                 xhr.open("get", src);

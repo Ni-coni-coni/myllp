@@ -1,0 +1,17 @@
+<component name="libraryTable">
+  <library name="Generated files" type="javaScript">
+    <properties>
+      <sourceFilesUrls>
+        <item url="file://$PROJECT_DIR$/judge-compiled.js" />
+        <item url="file://$PROJECT_DIR$/loader-compiled.js" />
+        <item url="file://$PROJECT_DIR$/gameManager-compiled.js" />
+      </sourceFilesUrls>
+    </properties>
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/judge-compiled.js" />
+      <root url="file://$PROJECT_DIR$/loader-compiled.js" />
+      <root url="file://$PROJECT_DIR$/gameManager-compiled.js" />
+    </CLASSES>
+    <SOURCES />
+  </library>
+</component>

@@ -1,15 +1,15 @@
-*{margin:0;padding:0;}
+*{margin:0;border:0;padding:0;position:absolute}
 
-html,body{height:100%;width:100%;}
+html,body{height:100%;width:100%;background-color:black;}
 
-#gameDiv{position:absolute;display:block;}
+#fpsCounterCanvas{background-color:bisque;z-index:-1;left:88%;width:12%;height:10%}
 
-#fpsCounterDiv{position:absolute;background-color:bisque;z-index:100}
+#debugDiv{background-color:bisque;z-index:99;left:40%}
 
-#debugDiv{position:absolute;background-color:bisque;z-index:99;left:50%}
+#startCanvas{background-color:bisque;z-index:98;left:42%;top:46%;width:16%;height:8%}
 
-#bgCanvas{position:absolute;width:100%;height:100%;display:block;z-index:0}
+#bgCanvas{width:100%;height:100%;z-index:0}
 
-#judgePosCanvas{position:absolute;width:100%;height:100%;display:block;z-index:1}
+#judgePosCanvas{width:100%;height:100%;z-index:1}
 
-#gameCanvas{position:absolute;width:100%;height:100%;display:block;z-index:2}
+#gameCanvas{width:100%;height:100%;z-index:2}

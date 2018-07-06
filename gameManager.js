@@ -8,13 +8,14 @@ class Game {
             perfect: "sound/perfect.mp3",
             great: "sound/great.mp3",
             good: "sound/good.mp3",
-            music: "music/excalibur.mp3",
-            beatmap: "map/converterTest.json"
+            music: "sound/perfect.mp3",
+            beatmap: "map/slideTest.json"
         };
 
         this.refs = {
             gameDiv: document.getElementById("gameDiv"),
-            fpsCounterDiv: document.getElementById("fpsCounterDiv"),
+            fpsCounterCanvas: document.getElementById("fpsCounterCanvas"),
+            startCanvas: document.getElementById("startCanvas"),
             debugDiv: document.getElementById("debugDiv"),
             bgCanvas: document.getElementById("bgCanvas"),
             judgePosCanvas: document.getElementById("judgePosCanvas"),
@@ -134,7 +135,15 @@ class Game {
 
             this.initCoordinates();
             this.renderJudgeAreas();
-            return this.start();
+
+            let that = this;
+            let startCtx = this.refs.startCanvas.getContext("2d");
+            startCtx.font = "300px Georgia";
+            startCtx.fillText("Start!!!", 100, 400);
+            this.refs.startCanvas.addEventListener("click", function(){
+                that.refs.startCanvas.style.zIndex = -1;
+                that.start();
+            });
         });
     }
 
@@ -164,7 +173,7 @@ class Game {
             radius = this.judgeAreaRadii[i];
             cxt.beginPath();
             cxt.arc(centerX, centerY, radius, 0, 360);
-            cxt.fillStyle = "yellow";
+            cxt.fillStyle = "#FFE699";
             cxt.fill();
             cxt.closePath();
         }
@@ -179,7 +188,7 @@ class Game {
             let judgement;
             // console.log("x:" + canvasX);
             // console.log("y:" + canvasY);
-            let judgeAreas = this.judge.getJudgeAreas(this.judgeAreaCenters, this.judgeAreaRadii,
+            let judgeAreas = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
             if (judgeAreas.length != 0) {
                 for (let i of judgeAreas) {
@@ -207,7 +216,7 @@ class Game {
             let judgement;
             console.log("x:" + canvasX);
             console.log("y:" + canvasY);
-            let judgeAreas = this.judge.getJudgeAreas(this.judgeAreaCenters, this.judgeAreaRadii,
+            let judgeAreas = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
             if (judgeAreas.length != 0) {
                 for (let i of judgeAreas) {
@@ -240,13 +249,19 @@ class Game {
             }
             // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
             let judgement;
-            let judgeAreas = this.judge.getJudgeAreas(this.judgeAreaCenters, this.judgeAreaRadii,
+            let judgeAreas = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
             if (judgeAreas.length != 0) {
                 for (let i of judgeAreas) {
                     if (this.judgeIndices[i] < this.allNotes[i].length) {
-                        judgement = this.judge.getJudgement(touchTiming,
-                            this.allNotes[i][this.judgeIndices[i]][0]);
+                        let noteToJudge = this.allNotes[i][this.judgeIndices[i]];
+                        let noteType = noteToJudge[2];
+                        let noteTiming = noteToJudge[0];
+                        if (noteType == 2) {
+                            judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                        } else {
+                            judgement = this.judge.getJudgement(touchTiming, noteTiming);
+                        }
                         this._executeJudgeEffect(judgement);
                         if (judgement != null) {
                             this.allNotes[i][this.judgeIndices[i]][3] = false;
@@ -272,17 +287,21 @@ class Game {
             }
             // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
             let judgement;
-            let judgeAreas = this.judge.getJudgeAreas(this.judgeAreaCenters, this.judgeAreaRadii,
+            let judgeAreas = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
             if (judgeAreas.length != 0) {
                 for (let i of judgeAreas) {
                     if (this.judgeIndices[i] < this.allNotes[i].length) {
-                        judgement = this.judge.getJudgement(touchTiming,
-                            this.allNotes[i][this.judgeIndices[i]][0]);
-                        this._executeJudgeEffect(judgement);
-                        if (judgement != null) {
-                            this.allNotes[i][this.judgeIndices[i]][3] = false;
-                            this.judgeIndices[i]++;
+                        let noteToJudge = this.allNotes[i][this.judgeIndices[i]];
+                        let noteType = noteToJudge[2];
+                        let noteTiming = noteToJudge[0];
+                        if (noteType == 2) {
+                            judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                            this._executeJudgeEffect(judgement);
+                            if (judgement != null) {
+                                this.allNotes[i][this.judgeIndices[i]][3] = false;
+                                this.judgeIndices[i]++;
+                            }
                         }
                     }
                 }
@@ -356,6 +375,7 @@ class Game {
     start() {
         console.log("renderGame");
         this.playSound(this.music);
+
         this.gameTiming = 0;
         let gamePosition, lastGamePosition = 0;
         let thresholds = this._getInitialThresholds(); // 屏幕边界处的note索引
@@ -372,13 +392,16 @@ class Game {
         let lastFPSCountTiming = then;
         let lastFrameCount = 0;
 
+        let oneFrameTime = 0;
+
         let that = this;
         (function animate() {
             requestAnimationFrame(animate);
             now = Date.now();
             elapsed = now - then;
-            if (elapsed > that.frameInterval) {
+            //if (elapsed > that.frameInterval) {
                 frameCount ++;
+                /*
                 if (now - lastFPSCountTiming > 1000) {
                     let fps = (frameCount - lastFrameCount) * 1000 / (now - lastFPSCountTiming);
                     //console.log(fps);
@@ -387,14 +410,22 @@ class Game {
                     lastFrameCount = frameCount;
                     lastFPSCountTiming = now;
                 }
+                */
                 then = now - (elapsed % that.frameInterval);
                 that.gameTiming = now - that.startTiming;
+                let oneFrameStart = Date.now(); //TODO
                 gamePosition = that._getPosition(that.gameTiming, that.speedLines,
                     0, that.speedLines.length-1, that.baselineHiSpeed);
                 that._updateJudgeIndices(that.judgeIndices, that.gameTiming);
                 that._renderOneFrame(gamePosition, lastGamePosition, that.renderRange, thresholds);
+                oneFrameTime = Date.now() - oneFrameStart; //TODO
+                if (frameCount % 10 == 0) {
+                    that.refs.debugDiv.innerText = "frame count:" + frameCount +
+                        "\nrender time every frame:" + oneFrameTime + "ms"; //TODO
+                }
                 lastGamePosition = gamePosition;
-            }
+
+            //}
         })();
     }
 

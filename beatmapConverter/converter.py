@@ -205,8 +205,8 @@ def convert(bms_filename, json_filename):
 
 
 if __name__ == '__main__':
-    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/test.bms'
-    json_file = 'test.json'
+    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/slideTest.bms'
+    json_file = 'slideTest.json'
     convert(bms_file, json_file)
 
 
