@@ -431,7 +431,7 @@ class Game {
 
     _renderOneFrame(gamePosition, lastGamePosition, renderRange, thresholds) {
         let indexIn, indexOut;
-        let notePos;
+        let notePos, noteType;
         if (gamePosition > lastGamePosition) {
             for (let i = 0; i < 9; i++) {
                 indexIn = thresholds[0][i];
@@ -475,16 +475,17 @@ class Game {
             for (let j = thresholds[1][i]; j < thresholds[0][i]; j++) {
                 if (this.allNotes[i][this.allNoteIndices[i][j]][3]) {
                     notePos = this.allNotes[i][this.allNoteIndices[i][j]][1];
+                    noteType = this.allNotes[i][this.allNoteIndices[i][j]][2];
                     this._drawNote(this.startPoints[i][0], this.startPoints[i][1],
                         this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
-                        notePos, gamePosition, renderRange);
+                        notePos, noteType, gamePosition, renderRange);
                 }
             }
         }
 
     }
 
-    _drawNote(startX, startY, destX, destY, notePosition, gamePosition, renderRange) {
+    _drawNote(startX, startY, destX, destY, notePosition, noteType, gamePosition, renderRange) {
         let finishedDistanceRatio = (gamePosition - notePosition + renderRange) / renderRange;
         let noteX = startX + (destX - startX) * finishedDistanceRatio;
         let noteY = startY + (destY - startY) * finishedDistanceRatio;
@@ -492,9 +493,16 @@ class Game {
         let noteLeft = noteX - 68 * noteSizeRatio;
         let noteTop = noteY - 68 * noteSizeRatio;
         let noteSize = 136 * noteSizeRatio;
-        this.refs.gameCanvas.getContext("2d").drawImage(
-            this.skinImage, 396, 15, 128, 128,
-            noteLeft, noteTop, noteSize, noteSize);
+        if (noteType == 0) {
+            this.refs.gameCanvas.getContext("2d").drawImage(
+                this.skinImage, 396, 175, 128, 128,
+                noteLeft, noteTop, noteSize, noteSize);
+        } else if (noteType == 2) {
+            this.refs.gameCanvas.getContext("2d").drawImage(
+                this.skinImage, 396, 337, 128, 128,
+                noteLeft, noteTop, noteSize, noteSize);
+        }
+
     }
 
     // tips: 指定原始canvas大小用js或者h5标签（1024×682），

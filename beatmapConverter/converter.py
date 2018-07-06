@@ -15,7 +15,8 @@ lane_refs = {
 
 label_refs = {
     '01': 0,
-    '02': 1
+    '02': 1,
+    '03': 2
 }
 
 long_note_label_refs = {
