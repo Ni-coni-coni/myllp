@@ -14,17 +14,17 @@ lane_refs = {
 }
 
 label_refs = {
-    '01': 0,
-    '02': 1,
-    '03': 2
+    '01': 0,  # tap
+    '02': 1,  # slide
+    '03': 2   # flick(not implemented)
 }
 
 long_note_label_refs = {
-    '01': 2,
-    '02': 3,
-    '03': 4,
-    '04': 5,
-    '05': 6
+    '01': 3,  # tap-
+    '02': 4,  # slide-
+    '03': 5,  # tap-slide
+    '04': 6,  # slide-slide
+    '05': 7
 }
 
 
@@ -177,7 +177,7 @@ def parse_note_measure(measure_data, label_refs, long_note_label_refs):
 
 def generate_json_with_speed_line(timing_note_lists, json_filename):
     data = json.dumps(timing_note_lists)
-    whole_json_data = '{"speedLines":[[0,1]],"notes":' + data + '}'
+    whole_json_data = '{"speedLines":[[0,1.3]],"notes":' + data + '}'
     print(whole_json_data)
     with open('json/' + json_filename, mode='w+') as f:
         f.write(whole_json_data)
@@ -206,8 +206,8 @@ def convert(bms_filename, json_filename):
 
 
 if __name__ == '__main__':
-    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/slideTest.bms'
-    json_file = 'slideTest.json'
+    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/holdTest.bms'
+    json_file = 'holdTest.json'
     convert(bms_file, json_file)
 
 

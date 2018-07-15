@@ -10,7 +10,7 @@ class Judge {
     }
 
     getLanesToJudge(judgeAreaCenters, radii, canvasTouchCoords) {
-        let judgeStatus = [];
+        let lanesToJudge = [];
         let oneHot = [false, false, false, false, false, false, false, false, false];
         let dX, dY, distance;
         for (let i = 0; i < judgeAreaCenters.length; i++) {
@@ -24,9 +24,9 @@ class Judge {
             }
         }
         for (let i = 0; i < judgeAreaCenters.length; i++) {
-            if (oneHot[i] == true) judgeStatus.push(i);
+            if (oneHot[i] == true) lanesToJudge.push(i);
         }
-        return judgeStatus;
+        return lanesToJudge;
     }
 
     getJudgement(touchTiming, noteTiming) {
