@@ -7,9 +7,12 @@ class Judge {
         this.slidePerfect = 60;
         this.slideGreat = 90;
         this.slideGood = 120;
+        this.holdEndPerfect = 40;
+        this.holdEndGreat = 70;
+        this.holdEndGood = 120;
     }
 
-    getLanesToJudge(judgeAreaCenters, radii, canvasTouchCoords) {
+    getLanesToJudge(judgeAreaCenters, radii, canvasTouchCoords, oneHot=false) {
         let lanesToJudge = [];
         let oneHot = [false, false, false, false, false, false, false, false, false];
         let dX, dY, distance;
@@ -23,10 +26,15 @@ class Judge {
                 }
             }
         }
-        for (let i = 0; i < judgeAreaCenters.length; i++) {
-            if (oneHot[i] == true) lanesToJudge.push(i);
+        if (oneHot) {
+            return oneHot;
         }
-        return lanesToJudge;
+        else {
+            for (let i = 0; i < judgeAreaCenters.length; i++) {
+                if (oneHot[i] == true) lanesToJudge.push(i);
+            }
+            return lanesToJudge;
+        }
     }
 
     getJudgement(touchTiming, noteTiming) {
@@ -61,6 +69,20 @@ class Judge {
         }
     }
 
-
+    getHoldEndJudgement(touchTiming, noteTiming) {
+        let deviation = Math.abs(touchTiming - noteTiming);
+        if (deviation > this.holdEndGood) {
+            return null;
+        }
+        else if (deviation > this.holdEndGreat) {
+            return "good";
+        }
+        else if (deviation > this.holdEndPerfect) {
+            return "great";
+        }
+        else {
+            return "perfect";
+        }
+    }
 
 }

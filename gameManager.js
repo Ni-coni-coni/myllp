@@ -9,7 +9,7 @@ class Game {
             great: "sound/great.mp3",
             good: "sound/good.mp3",
             music: "sound/perfect.mp3",
-            beatmap: "map/holdTest.json"
+            beatmap: "map/holdTest2.json"
         };
 
         this.refs = {
@@ -17,6 +17,8 @@ class Game {
             fpsCounterCanvas: document.getElementById("fpsCounterCanvas"),
             startCanvas: document.getElementById("startCanvas"),
             debugDiv: document.getElementById("debugDiv"),
+            debugDiv1: document.getElementById("debugDiv1"),
+            debugDiv2: document.getElementById("debugDiv2"),
             bgCanvas: document.getElementById("bgCanvas"),
             judgePosCanvas: document.getElementById("judgePosCanvas"),
             gameCanvas: document.getElementById("gameCanvas")
@@ -40,8 +42,8 @@ class Game {
         this.frameInterval = 1000 / this.fps;
 
         // notesInTmgOrd[i][j][k]表示第i个轨道，按时间排第j个note的第k个属性
-        // k=0->timing, k=1->position, k=2->type, k=3->existence, k=4->judgeablility,
-        // k=5->end timing(if type == hold), k=6->end pos(if type == hold)
+        // k=0->timing, k=1->position, k=2->type, k=3->isMulti, k=4->existence, k=5->judgeablility,
+        // k=6->end timing(if type == hold), k=7->end pos(if type == hold)
         this.notesInTmgOrd = [[], [], [], [], [], [], [], [], []];
         // indicesForTS[i]中存放第i个轨道，能被TouchStart判定的note的索引列表
         this.indicesForTS = [[], [], [], [], [], [], [], [], []];
@@ -62,6 +64,7 @@ class Game {
 
         this.judgePtrsOfITS = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // 指向正在等待判定的note的索引（TouchStart用）
         this.judgePtrsOfITM = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        this.onhold = [-1, -1, -1, -1, -1, -1, -1, -1, -1];
 
 
         this.resizeRatio = 1;
@@ -101,7 +104,6 @@ class Game {
                 this.assets.beatmap
             ]);
         }).then(([beatmap]) => {
-
             let position = 0;
             let speedChangeTiming, speedRatio;
             for (let i = 0; i < beatmap.speedLines.length; i++) {
@@ -115,7 +117,7 @@ class Game {
             }
             console.log(beatmap);
 
-            let noteIdx, noteTiming, notePosition, noteType, isExist, isJudgeable, noteEndTiming, noteEndPosition;
+            let noteIdx, noteTiming, notePosition, noteType, isMulti, isExist, isOnhold, noteEndTiming, noteEndPosition;
             for (let i = 0; i < 9; i++) {
                 noteIdx = 0;
                 for (let j = 0; j < beatmap.notes[i].length; j++) {
@@ -123,15 +125,16 @@ class Game {
                     notePosition = this._getPosition(noteTiming, this.speedLines,
                         0, this.speedLines.length-1, this.baselineHiSpeed);
                     noteType = beatmap.notes[i][j][1];
+                    isMulti = false;
                     isExist = true;
-                    isJudgeable = true;
+                    isOnhold = false;
                     if (noteType <= 2) {
-                        this.notesInTmgOrd[i].push([noteTiming, notePosition, noteType, isExist, isJudgeable]);
+                        this.notesInTmgOrd[i].push([noteTiming, notePosition, noteType, isMulti, isExist]);
                     } else {
                         noteEndTiming = beatmap.notes[i][++j][0];
                         noteEndPosition = this._getPosition(noteEndTiming, this.speedLines,
                             0, this.speedLines.length-1, this.baselineHiSpeed);
-                        this.notesInTmgOrd[i].push([noteTiming, notePosition, noteType, isExist, isJudgeable,
+                        this.notesInTmgOrd[i].push([noteTiming, notePosition, noteType, isMulti, isExist, isOnhold,
                             noteEndTiming, noteEndPosition]);
                     }
                     if (noteType == 0) {
@@ -157,6 +160,22 @@ class Game {
                 this.lengthsOfITS[i] = this.indicesForTS[i].length;
                 this.lengthsOfITM[i] = this.indicesForTM[i].length;
             }
+            // 检测多押并加标记
+            let notes = [];
+            for (let i = 0; i < 9; i++) {
+                let oneLaneNotes = this.notesInTmgOrd[i];
+                for (let j = 0; j < oneLaneNotes.length; j++) {
+                    noteTiming = oneLaneNotes[j][0];
+                    notes.push([noteTiming, i, j])
+                }
+            }
+            notes.sort((note1, note2) => note1[0] - note2[0]);
+            for (let i = 0; i < notes.length-1; i++) {
+                if (notes[i][0] == notes[i+1][0]) {
+                    this.notesInTmgOrd[notes[i][1]][notes[i][2]][3] = true;
+                    this.notesInTmgOrd[notes[i+1][1]][notes[i+1][2]][3] = true;
+                }
+            }
             // 按noteIdx对应的note的pos排序indicesInPosOrd
             for (let i = 0; i < this.indicesInPosOrd.length; i++) {
                 this.indicesInPosOrd[i].sort((indexA, indexB) =>
@@ -181,10 +200,11 @@ class Game {
             this.initCoordinates();
             this.renderJudgeAreas();
 
+            this.start();
             let that = this;
             let startCtx = this.refs.startCanvas.getContext("2d");
             startCtx.font = "300px Georgia";
-            startCtx.fillText("Start!", 100, 400);
+            startCtx.fillText("Start!!!", 100, 400);
             this.refs.startCanvas.addEventListener("click", function(){
                 that.refs.startCanvas.style.zIndex = -1;
                 that.start();
@@ -224,78 +244,19 @@ class Game {
         }
     }
 
+    /*
     addMouseEventListener() {
         this.refs.gameCanvas.addEventListener("mousedown", (e) => {
             let touchTiming = Date.now() - this.startTiming;
             let canvasX = e.offsetX / this.resizeRatio;
             let canvasY = e.offsetY / this.resizeRatio;
             let canvasTouchCoords = [[canvasX, canvasY]];
-            let judgement;
             // console.log("x:" + canvasX);
             // console.log("y:" + canvasY);
-            let judgeAreas = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
-                canvasTouchCoords);
-            if (judgeAreas.length != 0) {
-                for (let i of judgeAreas) {
-                    if (this.judgePtrsOfNotesArr[i] < this.notesInTmgOrd[i].length) {
-                        judgement = this.judge.getJudgement(touchTiming,
-                            this.notesInTmgOrd[i][this.judgePtrsOfNotesArr[i]][0]);
-                        this._executeJudgeEffect(judgement);
-                        console.log(judgement);
-                        if (judgement != null) {
-                            this.notesInTmgOrd[i][this.judgePtrsOfNotesArr[i]][3] = false;
-                            this.judgePtrsOfNotesArr[i]++;
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    addMouseMoveEventListener() {
-        this.refs.gameCanvas.addEventListener("mousemove", (e) => {
-            let touchTiming = Date.now() - this.startTiming;
-            let canvasX = e.offsetX / this.resizeRatio;
-            let canvasY = e.offsetY / this.resizeRatio;
-            let canvasTouchCoords = [[canvasX, canvasY]];
-            let judgement;
-            console.log("x:" + canvasX);
-            console.log("y:" + canvasY);
-            let judgeAreas = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
-                canvasTouchCoords);
-            if (judgeAreas.length != 0) {
-                for (let i of judgeAreas) {
-                    if (this.judgePtrsOfNotesArr[i] < this.notesInTmgOrd[i].length) {
-                        judgement = this.judge.getJudgement(touchTiming,
-                            this.notesInTmgOrd[i][this.judgePtrsOfNotesArr[i]][0]);
-                        this._executeJudgeEffect(judgement);
-                        console.log(judgement);
-                        if (judgement != null) {
-                            this.notesInTmgOrd[i][this.judgePtrsOfNotesArr[i]][3] = false;
-                            this.judgePtrsOfNotesArr[i]++;
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    addTouchStartEventListener() {
-        this.refs.gameCanvas.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            let touchTiming = Date.now() - this.startTiming;
-            let canvasTouchCoords = [];
-            let canvasX, canvasY;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
-                canvasX = (e.changedTouches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
-                canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
-                canvasTouchCoords.push([canvasX, canvasY]);
-            }
-            // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
-            let judgement;
+            let judgement, holdJudgement;
             let lanesToJudge = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
+
             if (lanesToJudge.length != 0) {
                 for (let lane of lanesToJudge) {
                     let ptr = this.judgePtrsOfITS[lane];
@@ -310,11 +271,107 @@ class Game {
                         else if (noteType == 1) {
                             judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
                         }
-                        this._executeJudgeEffect(judgement);
+                        else if (noteType == 3) {
+                            holdJudgement = this.judge.getJudgement(touchTiming, noteTiming);
+                        }
+                        else if (noteType == 4) {
+                            holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                        }
                         // 成功判定时将existence置为false，在每帧更新时移动指针
                         if (judgement != null) {
-                            this.notesInTmgOrd[lane][idxToJudge][3] = false;
+                            this._executeJudgeEffect(judgement);
                             this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                        }
+                        if (holdJudgement != null) {
+                            this.debugNum++;
+                            let holdTime = noteToJudge[6] - noteTiming;
+                            this._executeJudgeEffect(holdJudgement);
+                            this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                            this.notesInTmgOrd[lane][idxToJudge][5] = true;
+                            this.onhold[lane] = idxToJudge;
+                            let that = this;
+
+                            setTimeout(function () {
+                                that.refs.debugDiv.innerText = "TIME OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOUT!!!!"; //TODO
+                                let onholdIdx = that.onhold[lane];
+                                if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
+                                    that._executeJudgeEffect("perfect");
+                                    that.notesInTmgOrd[lane][onholdIdx][4] = false;
+                                    that.notesInTmgOrd[lane][onholdIdx][5] = false;
+                                    that.onhold[lane] = -1;
+                                }
+                            }, holdTime);
+                            this.refs.debugDiv2.innerText = "1holdnum:" + this.debugNum;
+                        }
+                    }
+                }
+            }
+        })
+    }
+    */
+
+    addTouchStartEventListener() {
+        this.refs.gameCanvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            let touchTiming = Date.now() - this.startTiming;
+            let canvasTouchCoords = [];
+            let canvasX, canvasY;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
+                canvasX = (e.changedTouches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
+                canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
+                canvasTouchCoords.push([canvasX, canvasY]);
+            }
+            // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
+            let judgement, holdJudgement;
+            let lanesToJudge = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
+                canvasTouchCoords);
+
+            if (lanesToJudge.length != 0) {
+                for (let lane of lanesToJudge) {
+                    let ptr = this.judgePtrsOfITS[lane];
+                    if (ptr < this.lengthsOfITS[lane]) {
+                        let idxToJudge = this.indicesForTS[lane][ptr];
+                        let noteToJudge = this.notesInTmgOrd[lane][idxToJudge];
+                        let noteType = noteToJudge[2];
+                        let noteTiming = noteToJudge[0];
+                        if (noteType == 0) {
+                            judgement = this.judge.getJudgement(touchTiming, noteTiming);
+                        }
+                        else if (noteType == 1) {
+                            judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                        }
+                        else if (noteType == 3) {
+                            holdJudgement = this.judge.getJudgement(touchTiming, noteTiming);
+                        }
+                        else if (noteType == 4) {
+                            holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                        }
+                        // 成功判定时将existence置为false，在每帧更新时移动指针
+                        if (judgement != null) {
+                            this._executeJudgeEffect(judgement);
+                            this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                        }
+                        if (holdJudgement != null) {
+                            let holdTime = noteToJudge[6] - noteTiming;
+                            this._executeJudgeEffect(holdJudgement);
+                            this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                            this.notesInTmgOrd[lane][idxToJudge][5] = true;
+                            this.onhold[lane] = idxToJudge;
+
+                            this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
+
+                            let that = this;
+                            setTimeout(function (lane, that) {
+                                let onholdIdx = that.onhold[lane];
+                                if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
+                                    that._executeJudgeEffect("perfect");
+                                    that.notesInTmgOrd[lane][onholdIdx][4] = false;
+                                    that.notesInTmgOrd[lane][onholdIdx][5] = false;
+                                    that.onhold[lane] = -1;
+                                }
+                            }, holdTime, lane, that);
+
                         }
                     }
                 }
@@ -327,6 +384,7 @@ class Game {
             e.preventDefault();
             let touchTiming = Date.now() - this.startTiming;
             let canvasTouchCoords = [];
+            let canvasOnTouchCoords = [];
             let canvasX, canvasY;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
@@ -334,10 +392,19 @@ class Game {
                 canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
                 canvasTouchCoords.push([canvasX, canvasY]);
             }
+            for (let i = 0; i < e.touches.length; i++) {
+                // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
+                canvasX = (e.touches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
+                canvasY = (e.touches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
+                canvasOnTouchCoords.push([canvasX, canvasY]);
+            }
             // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
-            let judgement;
+            let judgement, holdJudgement;
             let lanesToJudge = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasTouchCoords);
+            let lanesOnTouchOneHot = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
+                canvasOnTouchCoords, true);
+            this.refs.debugDiv2.innerText = "move:" + lanesToJudge.join("-") + "\ntouches:" + lanesOnTouch.join("-");
             if (lanesToJudge.length != 0) {
                 for (let lane of lanesToJudge) {
                     let ptr = this.judgePtrsOfITM[lane];
@@ -349,15 +416,110 @@ class Game {
                         if (noteType == 1) {
                             judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
                         }
-                        this._executeJudgeEffect(judgement);
+                        else if (noteType == 4) {
+                            holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                        }
                         if (judgement != null) {
-                            this.notesInTmgOrd[lane][idxToJudge][3] = false;
+                            this._executeJudgeEffect(judgement);
                             this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                        }
+                        if (holdJudgement != null) {
+                            let holdTime = noteToJudge[6] - noteTiming;
+                            this._executeJudgeEffect(holdJudgement);
+                            this.notesInTmgOrd[lane][idxToJudge][5] = true;
+                            this.onhold[lane] = idxToJudge;
+
+                            this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
+
+                            let that = this;
+                            setTimeout(function (lane, that) {
+                                let onholdIdx = that.onhold[lane];
+                                if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
+                                    that._executeJudgeEffect("perfect");
+                                    that.notesInTmgOrd[lane][onholdIdx][4] = false;
+                                    that.notesInTmgOrd[lane][onholdIdx][5] = false;
+                                    that.onhold[lane] = -1;
+                                }
+                            }, holdTime, lane, that);
+
+                        }
+                    }
+                }
+            }
+            // 判断在有hold的情况是否有手指移出范围
+            for (let lane = 0; lane < 9; lane++) {
+                if (this.onhold[lane] != -1 && lanesOnTouchOneHot[lane] == false) { // move out
+                    this.refs.debugDiv2.innerText = "MOVE OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOUT!!!!"; //TODO
+                    let onholdIdx = this.onhold[lane];
+                    let noteEndTiming = this.notesInTmgOrd[lane][onholdIdx][6];
+                    judgement = this.judge.getHoldEndJudgement(touchTiming, noteEndTiming);
+                    this._executeJudgeEffect(judgement);
+                    this.notesInTmgOrd[lane][onholdIdx][5] = false;
+                    this.onhold[lane] = -1;
+                }
+            }
+
+        })
+    }
+
+    addTouchEndEventListener() {
+        this.refs.gameCanvas.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            let touchTiming = Date.now() - this.startTiming;
+            let canvasTouchCoords = [];
+            let canvasOnTouchCoords = [];
+            let canvasX, canvasY;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
+                canvasX = (e.changedTouches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
+                canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
+                canvasTouchCoords.push([canvasX, canvasY]);
+            }
+            for (let i = 0; i < e.touches.length; i++) {
+                // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
+                canvasX = (e.touches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
+                canvasY = (e.touches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
+                canvasOnTouchCoords.push([canvasX, canvasY]);
+            }
+            // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
+            let judgement;
+            let lanesTouchEnd = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
+                canvasTouchCoords);
+            let lanesOnTouch = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
+                canvasOnTouchCoords);
+            if (lanesTouchEnd.length != 0) {
+                for (let lane of lanesTouchEnd) {
+                    // 判断在有hold的情况是否有手指抬起
+                    if (this.onhold[lane] != -1) {
+                        let away = true;
+                        for (let laneOnTouch of lanesOnTouch) {
+                            if (laneOnTouch == lane) {
+                                away = false;
+                            }
+                        }
+                        if (away) {
+                            let onholdIdx = this.onhold[lane];
+                            let noteEndTiming = this.notesInTmgOrd[lane][onholdIdx][6];
+                            judgement = this.judge.getHoldEndJudgement(touchTiming, noteEndTiming);
+                            this._executeJudgeEffect(judgement);
+                            this.notesInTmgOrd[lane][onholdIdx][5] = false;
+                            this.onhold[lane] = -1;
                         }
                     }
                 }
             }
         })
+    }
+
+    _judgeHoldEndAuto(lane) {
+        this.refs.debugDiv.innerText = "TIME OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOUT!!!!"; //TODO
+        let onholdIdx = this.onhold[lane];
+        if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
+            this._executeJudgeEffect("perfect");
+            this.notesInTmgOrd[lane][onholdIdx][4] = false;
+            this.notesInTmgOrd[lane][onholdIdx][5] = false;
+            this.onhold[lane] = -1;
+        }
     }
 
     _executeJudgeEffect(judgement) {
@@ -418,14 +580,12 @@ class Game {
             if (judgePtrsOfITS[i] < this.lengthsOfITS[i]) {
                 idxToJudgeForTS = this.indicesForTS[i][judgePtrsOfITS[i]];
                 if (gameTiming - this.notesInTmgOrd[i][idxToJudgeForTS][0] > this.judge.good) {
-                    this.notesInTmgOrd[i][idxToJudgeForTS][3] = false;
                     this.notesInTmgOrd[i][idxToJudgeForTS][4] = false;
                 }
             }
             if (judgePtrsOfITM[i] < this.lengthsOfITM[i]) {
                 idxToJudgeForTM = this.indicesForTM[i][judgePtrsOfITM[i]];
                 if (gameTiming - this.notesInTmgOrd[i][idxToJudgeForTM][0] > this.judge.good) {
-                    this.notesInTmgOrd[i][idxToJudgeForTM][3] = false;
                     this.notesInTmgOrd[i][idxToJudgeForTS][4] = false;
                 }
             }
@@ -458,9 +618,10 @@ class Game {
         this.gameTiming = 0;
         let gamePosition, lastGamePosition = 0;
 
-        //this.addMouseMoveEventListener();
+        //this.addMouseEventListener();
         this.addTouchStartEventListener();
         this.addTouchMoveEventListener();
+        this.addTouchEndEventListener();
 
         let frameCount = 0;
         let now, elapsed;
@@ -510,7 +671,7 @@ class Game {
 
     _renderOneFrame(gamePosition, lastGamePosition, renderRange, ptrsOfIPO) {
         let indexIn, indexOut;
-        let noteIdx, notePos, noteType;
+        let noteIdx, notePos, noteType, isMulti;
         if (gamePosition > lastGamePosition) {
             for (let i = 0; i < 9; i++) {
                 indexIn = ptrsOfIPO[0][i];
@@ -553,26 +714,44 @@ class Game {
         for (let i = 0; i < 9; i++) {
             for (let j = ptrsOfIPO[1][i]; j < ptrsOfIPO[0][i]; j++) {
                 noteIdx = this.indicesInPosOrd[i][j];
-                if (this.notesInTmgOrd[i][noteIdx][3]) {
+                if (this.notesInTmgOrd[i][noteIdx][4]) {
                     notePos = this.notesInTmgOrd[i][noteIdx][1];
                     noteType = this.notesInTmgOrd[i][noteIdx][2];
-                    if (noteType <= 2) {
+                    isMulti = this.notesInTmgOrd[i][noteIdx][3];
+                    if (noteType <= 2) { // TODO 注意这里的分类
                         this._drawNote(this.startPoints[i][0], this.startPoints[i][1],
                             this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
-                            notePos, noteType, gamePosition, renderRange);
+                            notePos, noteType, isMulti, gamePosition, renderRange);
                     }
-                    else if (noteType == 3) {
-                        let noteEndPos = this.notesInTmgOrd[i][noteIdx][6];
+                    else { // TODO 注意这里的分类
+                        let isOnhold = this.notesInTmgOrd[i][noteIdx][5];
+                        let noteEndPos = this.notesInTmgOrd[i][noteIdx][7];
                         if (noteEndPos > gamePosition + renderRange || noteEndPos < gamePosition - renderRange) {
                             this._drawHalfLongNote(this.startPoints[i][0], this.startPoints[i][1],
                                 this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
-                                notePos, noteType, gamePosition, renderRange);
+                                notePos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                         }
                         else {
                             this._drawLongNote(this.startPoints[i][0], this.startPoints[i][1],
                                 this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
-                                notePos, noteEndPos, noteType, gamePosition, renderRange);
+                                notePos, noteEndPos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                         }
+                    }
+                } else if (this.notesInTmgOrd[i][noteIdx][5]) {  // TODO isExist=False onHold=True
+                    notePos = this.notesInTmgOrd[i][noteIdx][1];
+                    noteType = this.notesInTmgOrd[i][noteIdx][2];
+                    isMulti = this.notesInTmgOrd[i][noteIdx][3];
+                    let isOnhold = this.notesInTmgOrd[i][noteIdx][5];
+                    let noteEndPos = this.notesInTmgOrd[i][noteIdx][7];
+                    if (noteEndPos > gamePosition + renderRange || noteEndPos < gamePosition - renderRange) {
+                        this._drawHalfLongNote(this.startPoints[i][0], this.startPoints[i][1],
+                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                            notePos, noteType, isMulti, isOnhold, gamePosition, renderRange);
+                    }
+                    else {
+                        this._drawLongNote(this.startPoints[i][0], this.startPoints[i][1],
+                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                            notePos, noteEndPos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                     }
                 }
             }
@@ -580,7 +759,7 @@ class Game {
 
     }
 
-    _drawNote(startX, startY, destX, destY, notePosition, noteType, gamePosition, renderRange) {
+    _drawNote(startX, startY, destX, destY, notePosition, noteType, isMulti, gamePosition, renderRange) {
         let finishedDistanceRatio = (gamePosition - notePosition + renderRange) / renderRange;
         let noteX = startX + (destX - startX) * finishedDistanceRatio;
         let noteY = startY + (destY - startY) * finishedDistanceRatio;
@@ -588,19 +767,29 @@ class Game {
         let noteLeft = noteX - 68 * finishedDistanceRatio;
         let noteTop = noteY - 68 * finishedDistanceRatio;
         let noteSize = 136 * finishedDistanceRatio;
+        let ctx = this.refs.gameCanvas.getContext("2d");
         if (noteType == 0) {
-            this.refs.gameCanvas.getContext("2d").drawImage(
+            ctx.drawImage(
                 this.skinImage, 396, 175, 128, 128,
                 noteLeft, noteTop, noteSize, noteSize);
         } else if (noteType == 1) {
-            this.refs.gameCanvas.getContext("2d").drawImage(
+            ctx.drawImage(
                 this.skinImage, 396, 337, 128, 128,
                 noteLeft, noteTop, noteSize, noteSize);
         }
-
+        if (isMulti) {
+            let barLeft = noteX - 68 * finishedDistanceRatio;
+            let barTop = noteY - 13 * finishedDistanceRatio;
+            let barWidth = 136 * finishedDistanceRatio;
+            let barHeight = 26 * finishedDistanceRatio;
+            ctx.drawImage(
+                this.skinImage, 242, 417, 128, 24,
+                barLeft, barTop, barWidth, barHeight);
+        }
     }
 
-    _drawHalfLongNote(startX, startY, destX, destY, notePosition, noteType, gamePosition, renderRange) {
+    _drawHalfLongNote(startX, startY, destX, destY, notePosition, noteType,
+                      isMulti, isOnhold, gamePosition, renderRange) {
         let finishedDistance = gamePosition - notePosition + renderRange;
         let finishedDistanceRatio = finishedDistance / renderRange;
         let finishedX = (destX - startX) * finishedDistanceRatio;
@@ -617,21 +806,43 @@ class Game {
         let head1Y = noteY - finishedX * rDividedByD;
         let head2X = noteX - finishedY * rDividedByD;
         let head2Y = noteY + finishedX * rDividedByD;
+
+        let rDividedByRange = 68 / 425;
+        let holdHead1X = destX + (destY - startY) * rDividedByRange;
+        let holdHead1Y = destY - (destX - startX) * rDividedByRange;
+        let holdHead2X = destX - (destY - startY) * rDividedByRange;
+        let holdHead2Y = destY + (destX - startX) * rDividedByRange;
         let ctx = this.refs.gameCanvas.getContext("2d");
-        this._drawTriangle(ctx, head1X, head1Y, head2X, head2Y, startX, startY);
-        if (noteType == 3) {
-            ctx.drawImage(
-                this.skinImage, 396, 175, 128, 128,
-                noteLeft, noteTop, noteSize, noteSize);
-        } else if (noteType == 4) {
-            ctx.drawImage(
-                this.skinImage, 396, 337, 128, 128,
-                noteLeft, noteTop, noteSize, noteSize);
+        if (!isOnhold) {
+            this._drawTriangle(ctx, head1X, head1Y, head2X, head2Y, startX, startY);
+            if (noteType == 3) {
+                ctx.drawImage(
+                    this.skinImage, 396, 175, 128, 128,
+                    noteLeft, noteTop, noteSize, noteSize);
+            } else if (noteType == 4) {
+                ctx.drawImage(
+                    this.skinImage, 396, 337, 128, 128,
+                    noteLeft, noteTop, noteSize, noteSize);
+            }
+            if (isMulti) {
+                let barLeft = noteX - 68 * finishedDistanceRatio;
+                let barTop = noteY - 13 * finishedDistanceRatio;
+                let barWidth = 136 * finishedDistanceRatio;
+                let barHeight = 26 * finishedDistanceRatio;
+                ctx.drawImage(
+                    this.skinImage, 242, 417, 128, 24,
+                    barLeft, barTop, barWidth, barHeight);
+            }
         }
+        else {
+            this._drawTriangle(ctx, holdHead1X, holdHead1Y, holdHead2X, holdHead2Y, startX, startY);
+        }
+
     }
 
 
-    _drawLongNote(startX, startY, destX, destY, notePosition, noteEndPos, noteType, gamePosition, renderRange) {
+    _drawLongNote(startX, startY, destX, destY, notePosition, noteEndPos, noteType,
+                  isMulti, isOnhold, gamePosition, renderRange) {
         let finishedDistance = gamePosition - notePosition + renderRange;
         let finishedDistanceRatio = finishedDistance / renderRange;
         let finishedX = (destX - startX) * finishedDistanceRatio;
@@ -666,17 +877,41 @@ class Game {
         let tail2X = noteX - finishedY * rDividedByD;
         let tail2Y = noteY + finishedX * rDividedByD;
 
+        let rDividedByRange = 68 / 425;
+        let holdHead1X = destX + (destY - startY) * rDividedByRange;
+        let holdHead1Y = destY - (destX - startX) * rDividedByRange;
+        let holdHead2X = destX - (destY - startY) * rDividedByRange;
+        let holdHead2Y = destY + (destX - startX) * rDividedByRange;
+
         let ctx = this.refs.gameCanvas.getContext("2d");
-        this._drawQuadrangle(ctx, head1X, head1Y, head2X, head2Y, tail2X, tail2Y, tail1X, tail1Y);
-        if (noteType == 3) {
-            ctx.drawImage(
-                this.skinImage, 396, 175, 128, 128,
-                noteLeft, noteTop, noteSize, noteSize);
-        } else if (noteType == 4) {
-            ctx.drawImage(
-                this.skinImage, 396, 337, 128, 128,
-                noteLeft, noteTop, noteSize, noteSize);
+
+        if (!isOnhold) {
+            this._drawQuadrangle(ctx, head1X, head1Y, head2X, head2Y, tail2X, tail2Y, tail1X, tail1Y);
+            if (noteType == 3) {
+                ctx.drawImage(
+                    this.skinImage, 396, 175, 128, 128,
+                    noteLeft, noteTop, noteSize, noteSize);
+            } else if (noteType == 4) {
+                ctx.drawImage(
+                    this.skinImage, 396, 337, 128, 128,
+                    noteLeft, noteTop, noteSize, noteSize);
+            }
+
+            if (isMulti) {
+                let barLeft = noteX - 68 * finishedDistanceRatio;
+                let barTop = noteY - 13 * finishedDistanceRatio;
+                let barWidth = 136 * finishedDistanceRatio;
+                let barHeight = 26 * finishedDistanceRatio;
+                ctx.drawImage(
+                    this.skinImage, 242, 417, 128, 24,
+                    barLeft, barTop, barWidth, barHeight);
+            }
         }
+        else {
+            this._drawQuadrangle(ctx, holdHead1X, holdHead1Y, holdHead2X, holdHead2Y,
+                                 tail2X, tail2Y, tail1X, tail1Y);
+        }
+
         ctx.drawImage(
             this.skinImage, 255, 275, 128, 128,
             noteTailLeft, noteTailTop, noteTailSize, noteTailSize);

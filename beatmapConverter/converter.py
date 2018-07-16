@@ -175,6 +175,11 @@ def parse_note_measure(measure_data, label_refs, long_note_label_refs):
     return pos_note_list
 
 
+def sort_timing_note_lists(timing_note_lists):
+    for timing_note_list in timing_note_lists:
+        timing_note_list.sort(key=lambda note: note[0])
+
+
 def generate_json_with_speed_line(timing_note_lists, json_filename):
     data = json.dumps(timing_note_lists)
     whole_json_data = '{"speedLines":[[0,1.3]],"notes":' + data + '}'
@@ -201,13 +206,14 @@ def convert(bms_filename, json_filename):
     timing_note_lists = get_timing_note_lists(notes_list, pos_bpm_measures, measure_start_timings,
                                               label_refs, long_note_label_refs)
     # print('timing_note_lists:\n', timing_note_lists)
+    sort_timing_note_lists(timing_note_lists)
     print()
     generate_json_with_speed_line(timing_note_lists, json_filename)
 
 
 if __name__ == '__main__':
-    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/holdTest.bms'
-    json_file = 'holdTest.json'
+    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/holdTest2.bms'
+    json_file = 'holdTest2.json'
     convert(bms_file, json_file)
 
 
