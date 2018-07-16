@@ -12,7 +12,7 @@ class Judge {
         this.holdEndGood = 120;
     }
 
-    getLanesToJudge(judgeAreaCenters, radii, canvasTouchCoords, oneHot=false) {
+    getLanesToJudge(judgeAreaCenters, radii, canvasTouchCoords, ifOneHot=false) {
         let lanesToJudge = [];
         let oneHot = [false, false, false, false, false, false, false, false, false];
         let dX, dY, distance;
@@ -26,7 +26,7 @@ class Judge {
                 }
             }
         }
-        if (oneHot) {
+        if (ifOneHot) {
             return oneHot;
         }
         else {

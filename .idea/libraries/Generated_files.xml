@@ -3,13 +3,17 @@
     <properties>
       <sourceFilesUrls>
         <item url="file://$PROJECT_DIR$/judge-compiled.js" />
+        <item url="file://$PROJECT_DIR$/test-compiled.js" />
         <item url="file://$PROJECT_DIR$/loader-compiled.js" />
+        <item url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
         <item url="file://$PROJECT_DIR$/gameManager-compiled.js" />
       </sourceFilesUrls>
     </properties>
     <CLASSES>
       <root url="file://$PROJECT_DIR$/judge-compiled.js" />
+      <root url="file://$PROJECT_DIR$/test-compiled.js" />
       <root url="file://$PROJECT_DIR$/loader-compiled.js" />
+      <root url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
       <root url="file://$PROJECT_DIR$/gameManager-compiled.js" />
     </CLASSES>
     <SOURCES />

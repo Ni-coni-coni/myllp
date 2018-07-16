@@ -57,7 +57,10 @@ class Game {
         // j=1->timing j=2->speed ratio j=3->position
         this.speedLines = [];
         this.baselineHiSpeed = 0.5;
-        this.renderRange = 425;
+        this.renderRange = 425;  // TODO 260
+        this.startX = 512;
+        this.startY = 170;  // TODO 342
+        this.destR = 68;  // TODO 56
         this.startPoints = [[], [], [], [], [], [], [], [], []];
         this.judgeAreaCenters = [[], [], [], [], [], [], [], [], []];
         this.judgeAreaRadii = new Array(9);
@@ -197,14 +200,14 @@ class Game {
             console.log(this.indicesForTM);
             console.log(this.windowPtrsOfIPO);
 
-            this.initCoordinates();
+            this.initCoordinates(this.startX, this.startY, this.destR);
+            // this.initCoordinatesMaiMai(this.startX, this.startY, this.destR);
             this.renderJudgeAreas();
 
-            this.start();
             let that = this;
             let startCtx = this.refs.startCanvas.getContext("2d");
             startCtx.font = "300px Georgia";
-            startCtx.fillText("Start!!!", 100, 400);
+            startCtx.fillText("Start!!", 100, 400);
             this.refs.startCanvas.addEventListener("click", function(){
                 that.refs.startCanvas.style.zIndex = -1;
                 that.start();
@@ -212,17 +215,30 @@ class Game {
         });
     }
 
-    initCoordinates() {
-        let startX = 512;
-        let startY = 170;
+    initCoordinates(startX, startY, destR) {
         let distance = this.renderRange;
         let pi = Math.PI;
         let angle = pi / 8;
-        let radius = 68;
+        let radius = destR;
         let centerX, centerY;
         for (let i = 0; i < 9; i ++) {
             centerX = startX + distance * Math.cos(pi + angle * i);
             centerY = startY - distance * Math.sin(pi + angle * i);
+            this.judgeAreaCenters[i] = [centerX, centerY];
+            this.startPoints[i] = [startX, startY];
+            this.judgeAreaRadii[i] = radius;
+        }
+    }
+
+    initCoordinatesMaiMai(startX, startY, destR) {
+        let distance = this.renderRange;
+        let pi = Math.PI;
+        let angle = pi / 4;
+        let radius = destR;
+        let centerX, centerY;
+        for (let i = 0; i < 9; i ++) {
+            centerX = startX + distance * Math.cos(pi / 8 * 5 + angle * i);
+            centerY = startY - distance * Math.sin(pi / 8 * 5 + angle * i);
             this.judgeAreaCenters[i] = [centerX, centerY];
             this.startPoints[i] = [startX, startY];
             this.judgeAreaRadii[i] = radius;
@@ -359,14 +375,13 @@ class Game {
                             this.notesInTmgOrd[lane][idxToJudge][5] = true;
                             this.onhold[lane] = idxToJudge;
 
-                            this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
+                            //this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
 
                             let that = this;
                             setTimeout(function (lane, that) {
                                 let onholdIdx = that.onhold[lane];
                                 if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
                                     that._executeJudgeEffect("perfect");
-                                    that.notesInTmgOrd[lane][onholdIdx][4] = false;
                                     that.notesInTmgOrd[lane][onholdIdx][5] = false;
                                     that.onhold[lane] = -1;
                                 }
@@ -404,7 +419,6 @@ class Game {
                 canvasTouchCoords);
             let lanesOnTouchOneHot = this.judge.getLanesToJudge(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasOnTouchCoords, true);
-            this.refs.debugDiv2.innerText = "move:" + lanesToJudge.join("-") + "\ntouches:" + lanesOnTouch.join("-");
             if (lanesToJudge.length != 0) {
                 for (let lane of lanesToJudge) {
                     let ptr = this.judgePtrsOfITM[lane];
@@ -429,14 +443,13 @@ class Game {
                             this.notesInTmgOrd[lane][idxToJudge][5] = true;
                             this.onhold[lane] = idxToJudge;
 
-                            this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
+                            // this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
 
                             let that = this;
                             setTimeout(function (lane, that) {
                                 let onholdIdx = that.onhold[lane];
                                 if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
                                     that._executeJudgeEffect("perfect");
-                                    that.notesInTmgOrd[lane][onholdIdx][4] = false;
                                     that.notesInTmgOrd[lane][onholdIdx][5] = false;
                                     that.onhold[lane] = -1;
                                 }
@@ -449,7 +462,6 @@ class Game {
             // 判断在有hold的情况是否有手指移出范围
             for (let lane = 0; lane < 9; lane++) {
                 if (this.onhold[lane] != -1 && lanesOnTouchOneHot[lane] == false) { // move out
-                    this.refs.debugDiv2.innerText = "MOVE OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOUT!!!!"; //TODO
                     let onholdIdx = this.onhold[lane];
                     let noteEndTiming = this.notesInTmgOrd[lane][onholdIdx][6];
                     judgement = this.judge.getHoldEndJudgement(touchTiming, noteEndTiming);
@@ -512,7 +524,6 @@ class Game {
     }
 
     _judgeHoldEndAuto(lane) {
-        this.refs.debugDiv.innerText = "TIME OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOUT!!!!"; //TODO
         let onholdIdx = this.onhold[lane];
         if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
             this._executeJudgeEffect("perfect");
@@ -670,6 +681,9 @@ class Game {
     }
 
     _renderOneFrame(gamePosition, lastGamePosition, renderRange, ptrsOfIPO) {
+
+        this.refs.debugDiv1.innerText = "lane4 onhold:\n" + this.onhold.join(",");
+        this.refs.debugDiv2.innerText = "note4 ifhold:\n" + this.notesInTmgOrd[3][0][5];
         let indexIn, indexOut;
         let noteIdx, notePos, noteType, isMulti;
         if (gamePosition > lastGamePosition) {
@@ -683,7 +697,8 @@ class Game {
                 }
                 indexOut = ptrsOfIPO[1][i];
                 for (let j = indexOut; j < this.indicesInPosOrd[i].length; j++) {
-                    notePos = this.notesInTmgOrd[i][this.indicesInPosOrd[i][j]][1];
+                    notePos = this.notesInTmgOrd[i][this.indicesInPosOrd[i][j]][7] ||
+                        this.notesInTmgOrd[i][this.indicesInPosOrd[i][j]][1]; //hold需要用条尾的pos来计算
                     if (notePos < gamePosition - renderRange) {
                         ptrsOfIPO[1][i]++;
                     } else break;
@@ -701,7 +716,8 @@ class Game {
                 }
                 indexOut = ptrsOfIPO[1][i];
                 for (let j = indexOut - 1; j >= 0; j--) {
-                    notePos = this.notesInTmgOrd[i][this.indicesInPosOrd[i][j]][1];
+                    notePos = this.notesInTmgOrd[i][this.indicesInPosOrd[i][j]][7] ||
+                        this.notesInTmgOrd[i][this.indicesInPosOrd[i][j]][1]; //hold需要用条尾的pos来计算
                     if (notePos > gamePosition - renderRange) {
                         ptrsOfIPO[1][i]--;
                     } else break;
@@ -720,7 +736,7 @@ class Game {
                     isMulti = this.notesInTmgOrd[i][noteIdx][3];
                     if (noteType <= 2) { // TODO 注意这里的分类
                         this._drawNote(this.startPoints[i][0], this.startPoints[i][1],
-                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1], this.destR,
                             notePos, noteType, isMulti, gamePosition, renderRange);
                     }
                     else { // TODO 注意这里的分类
@@ -728,16 +744,17 @@ class Game {
                         let noteEndPos = this.notesInTmgOrd[i][noteIdx][7];
                         if (noteEndPos > gamePosition + renderRange || noteEndPos < gamePosition - renderRange) {
                             this._drawHalfLongNote(this.startPoints[i][0], this.startPoints[i][1],
-                                this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                                this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1], this.destR,
                                 notePos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                         }
                         else {
                             this._drawLongNote(this.startPoints[i][0], this.startPoints[i][1],
-                                this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                                this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1], this.destR,
                                 notePos, noteEndPos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                         }
                     }
-                } else if (this.notesInTmgOrd[i][noteIdx][5]) {  // TODO isExist=False onHold=True
+                } else if (this.notesInTmgOrd[i][noteIdx][2] >= 3 && this.notesInTmgOrd[i][noteIdx][5]) {
+                    // isExist=False noteType=hold isOnHold=True
                     notePos = this.notesInTmgOrd[i][noteIdx][1];
                     noteType = this.notesInTmgOrd[i][noteIdx][2];
                     isMulti = this.notesInTmgOrd[i][noteIdx][3];
@@ -745,12 +762,12 @@ class Game {
                     let noteEndPos = this.notesInTmgOrd[i][noteIdx][7];
                     if (noteEndPos > gamePosition + renderRange || noteEndPos < gamePosition - renderRange) {
                         this._drawHalfLongNote(this.startPoints[i][0], this.startPoints[i][1],
-                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1], this.destR,
                             notePos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                     }
                     else {
                         this._drawLongNote(this.startPoints[i][0], this.startPoints[i][1],
-                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1],
+                            this.judgeAreaCenters[i][0], this.judgeAreaCenters[i][1], this.destR,
                             notePos, noteEndPos, noteType, isMulti, isOnhold, gamePosition, renderRange);
                     }
                 }
@@ -759,14 +776,14 @@ class Game {
 
     }
 
-    _drawNote(startX, startY, destX, destY, notePosition, noteType, isMulti, gamePosition, renderRange) {
+    _drawNote(startX, startY, destX, destY, destR, notePosition, noteType, isMulti, gamePosition, renderRange) {
         let finishedDistanceRatio = (gamePosition - notePosition + renderRange) / renderRange;
         let noteX = startX + (destX - startX) * finishedDistanceRatio;
         let noteY = startY + (destY - startY) * finishedDistanceRatio;
         // let noteSizeRatio = finishedDistanceRatio > 1 ? 1 : finishedDistanceRatio;
-        let noteLeft = noteX - 68 * finishedDistanceRatio;
-        let noteTop = noteY - 68 * finishedDistanceRatio;
-        let noteSize = 136 * finishedDistanceRatio;
+        let noteLeft = noteX - destR * finishedDistanceRatio;
+        let noteTop = noteY - destR * finishedDistanceRatio;
+        let noteSize = destR * 2 * finishedDistanceRatio;
         let ctx = this.refs.gameCanvas.getContext("2d");
         if (noteType == 0) {
             ctx.drawImage(
@@ -786,9 +803,17 @@ class Game {
                 this.skinImage, 242, 417, 128, 24,
                 barLeft, barTop, barWidth, barHeight);
         }
+        /*
+        if (isMulti) {//TODO maimai
+            ctx.drawImage(
+                this.skinImage, 396, 337, 128, 128,
+                noteLeft, noteTop, noteSize, noteSize);
+        }
+        */
+
     }
 
-    _drawHalfLongNote(startX, startY, destX, destY, notePosition, noteType,
+    _drawHalfLongNote(startX, startY, destX, destY, destR, notePosition, noteType,
                       isMulti, isOnhold, gamePosition, renderRange) {
         let finishedDistance = gamePosition - notePosition + renderRange;
         let finishedDistanceRatio = finishedDistance / renderRange;
@@ -797,22 +822,23 @@ class Game {
         let noteX = startX + finishedX;
         let noteY = startY + finishedY;
         // let noteSizeRatio = finishedDistanceRatio > 1 ? 1 : finishedDistanceRatio;
-        let noteLeft = noteX - 68 * finishedDistanceRatio;
-        let noteTop = noteY - 68 * finishedDistanceRatio;
-        let noteSize = 136 * finishedDistanceRatio;
-        let noteR = 68 * finishedDistanceRatio;
+        let noteLeft = noteX - destR * finishedDistanceRatio;
+        let noteTop = noteY - destR * finishedDistanceRatio;
+        let noteSize = destR * 2 * finishedDistanceRatio;
+        let noteR = destR * finishedDistanceRatio;
         let rDividedByD = noteR / finishedDistance;
         let head1X = noteX + finishedY * rDividedByD;
         let head1Y = noteY - finishedX * rDividedByD;
         let head2X = noteX - finishedY * rDividedByD;
         let head2Y = noteY + finishedX * rDividedByD;
 
-        let rDividedByRange = 68 / 425;
+        let rDividedByRange = destR / renderRange;
         let holdHead1X = destX + (destY - startY) * rDividedByRange;
         let holdHead1Y = destY - (destX - startX) * rDividedByRange;
         let holdHead2X = destX - (destY - startY) * rDividedByRange;
         let holdHead2Y = destY + (destX - startX) * rDividedByRange;
         let ctx = this.refs.gameCanvas.getContext("2d");
+        // note飞过来时
         if (!isOnhold) {
             this._drawTriangle(ctx, head1X, head1Y, head2X, head2Y, startX, startY);
             if (noteType == 3) {
@@ -825,15 +851,16 @@ class Game {
                     noteLeft, noteTop, noteSize, noteSize);
             }
             if (isMulti) {
-                let barLeft = noteX - 68 * finishedDistanceRatio;
+                let barLeft = noteX - destR * finishedDistanceRatio;
                 let barTop = noteY - 13 * finishedDistanceRatio;
-                let barWidth = 136 * finishedDistanceRatio;
+                let barWidth = destR * 2 * finishedDistanceRatio;
                 let barHeight = 26 * finishedDistanceRatio;
                 ctx.drawImage(
                     this.skinImage, 242, 417, 128, 24,
                     barLeft, barTop, barWidth, barHeight);
             }
         }
+        // note判定时
         else {
             this._drawTriangle(ctx, holdHead1X, holdHead1Y, holdHead2X, holdHead2Y, startX, startY);
         }
@@ -841,7 +868,7 @@ class Game {
     }
 
 
-    _drawLongNote(startX, startY, destX, destY, notePosition, noteEndPos, noteType,
+    _drawLongNote(startX, startY, destX, destY, destR, notePosition, noteEndPos, noteType,
                   isMulti, isOnhold, gamePosition, renderRange) {
         let finishedDistance = gamePosition - notePosition + renderRange;
         let finishedDistanceRatio = finishedDistance / renderRange;
@@ -850,10 +877,10 @@ class Game {
         let noteX = startX + finishedX;
         let noteY = startY + finishedY;
         // let noteSizeRatio = finishedDistanceRatio > 1 ? 1 : finishedDistanceRatio;
-        let noteLeft = noteX - 68 * finishedDistanceRatio;
-        let noteTop = noteY - 68 * finishedDistanceRatio;
-        let noteSize = 136 * finishedDistanceRatio;
-        let noteR = 68 * finishedDistanceRatio;
+        let noteLeft = noteX - destR * finishedDistanceRatio;
+        let noteTop = noteY - destR * finishedDistanceRatio;
+        let noteSize = destR * 2 * finishedDistanceRatio;
+        let noteR = destR * finishedDistanceRatio;
         let rDividedByD = noteR / finishedDistance;
         let head1X = noteX + finishedY * rDividedByD;
         let head1Y = noteY - finishedX * rDividedByD;
@@ -867,17 +894,17 @@ class Game {
         noteX = startX + finishedX;
         noteY = startY + finishedY;
         // noteSizeRatio = finishedDistanceRatio > 1 ? 1 : finishedDistanceRatio;
-        let noteTailLeft = noteX - 68 * finishedDistanceRatio;
-        let noteTailTop = noteY - 68 * finishedDistanceRatio;
-        let noteTailSize = 136 * finishedDistanceRatio;
-        noteR = 68 * finishedDistanceRatio;
+        let noteTailLeft = noteX - destR * finishedDistanceRatio;
+        let noteTailTop = noteY - destR * finishedDistanceRatio;
+        let noteTailSize = destR * 2 * finishedDistanceRatio;
+        noteR = destR * finishedDistanceRatio;
         rDividedByD = noteR / finishedDistance;
         let tail1X = noteX + finishedY * rDividedByD;
         let tail1Y = noteY - finishedX * rDividedByD;
         let tail2X = noteX - finishedY * rDividedByD;
         let tail2Y = noteY + finishedX * rDividedByD;
 
-        let rDividedByRange = 68 / 425;
+        let rDividedByRange = destR / renderRange;
         let holdHead1X = destX + (destY - startY) * rDividedByRange;
         let holdHead1Y = destY - (destX - startX) * rDividedByRange;
         let holdHead2X = destX - (destY - startY) * rDividedByRange;
@@ -898,9 +925,9 @@ class Game {
             }
 
             if (isMulti) {
-                let barLeft = noteX - 68 * finishedDistanceRatio;
+                let barLeft = noteX - destR * finishedDistanceRatio;
                 let barTop = noteY - 13 * finishedDistanceRatio;
-                let barWidth = 136 * finishedDistanceRatio;
+                let barWidth = destR * 2 * finishedDistanceRatio;
                 let barHeight = 26 * finishedDistanceRatio;
                 ctx.drawImage(
                     this.skinImage, 242, 417, 128, 24,
