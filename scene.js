@@ -70,6 +70,8 @@ class Scene {
     animate(beatmap, controller) {
         if (controller.update(beatmap)) {
             // this._updateJudgeIndices(beatmap);
+            // let group = beatmap.groups[0];
+            // console.log(group.currPos, group.lanes[0].backPtrOfIPO, group.lanes[0].frontPtrOfIPO);
             this._drawBeatmapFrame(beatmap);
         }
         requestAnimationFrame(this.animate.bind(this, beatmap, controller));

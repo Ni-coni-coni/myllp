@@ -201,18 +201,21 @@ class Beatmap {
 
     updatePos(gameTmg) {
         let eps = 1e-7;
+        let idx, notePos;
         for (let group of this.groups) {
             let pos = group._getPos(gameTmg, this.HS);
             if (pos > group.currPos + eps) {
                 for (let lane of group.lanes) {
-                    for (let i = lane.frontPtrOfIPO; i < lane.indicesInPosOrd.length; i++) {
-                        let notePos = lane.notesInTmgOrd[i].pos;
+                    for (let ptr = lane.frontPtrOfIPO; ptr < lane.indicesInPosOrd.length; ptr++) {
+                        idx = lane.indicesInPosOrd[ptr];
+                        notePos = lane.notesInTmgOrd[idx].pos;
                         if (notePos < pos + 1) {
                             lane.frontPtrOfIPO ++;
                         } else break;
                     }
-                    for (let i = lane.backPtrOfIPO; i < lane.indicesInPosOrd.length; i++) {
-                        let notePos = lane.notesInTmgOrd[i].tailPos || lane.notesInTmgOrd[i].pos; //hold需要用条尾的pos
+                    for (let ptr = lane.backPtrOfIPO; ptr < lane.indicesInPosOrd.length; ptr++) {
+                        idx = lane.indicesInPosOrd[ptr];
+                        notePos = lane.notesInTmgOrd[idx].tailPos || lane.notesInTmgOrd[idx].pos; //hold需要用条尾的pos
                         if (notePos < pos - 1) {
                             lane.backPtrOfIPO ++;
                         } else break;
@@ -220,15 +223,17 @@ class Beatmap {
                 }
             } else if (pos < group.currPos - eps) {
                 for (let lane of group.lanes) {
-                    for (let i = lane.frontPtrOfIPO - 1; i >= 0; i--) {
-                        let notePos = lane.notesInTmgOrd[i].pos;
-                        if (notePos < pos + 1) {
+                    for (let ptr = lane.frontPtrOfIPO - 1; ptr >= 0; ptr--) {
+                        idx = lane.indicesInPosOrd[ptr];
+                        notePos = lane.notesInTmgOrd[idx].pos;
+                        if (notePos > pos + 1) {
                             lane.frontPtrOfIPO --;
                         } else break;
                     }
-                    for (let i = lane.backPtrOfIPO - 1; i >= 0; i--) {
-                        let notePos = lane.notesInTmgOrd[i].tailPos || lane.notesInTmgOrd[i].pos; //hold需要用条尾的pos
-                        if (notePos < pos - 1) {
+                    for (let ptr = lane.backPtrOfIPO - 1; ptr >= 0; ptr--) {
+                        idx = lane.indicesInPosOrd[ptr];
+                        notePos = lane.notesInTmgOrd[idx].tailPos || lane.notesInTmgOrd[idx].pos; //hold需要用条尾的pos
+                        if (notePos > pos - 1) {
                             lane.backPtrOfIPO --;
                         } else break;
                     }
