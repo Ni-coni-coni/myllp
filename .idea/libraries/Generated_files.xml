@@ -2,19 +2,29 @@
   <library name="Generated files" type="javaScript">
     <properties>
       <sourceFilesUrls>
+        <item url="file://$PROJECT_DIR$/gameController-compiled.js" />
         <item url="file://$PROJECT_DIR$/judge-compiled.js" />
         <item url="file://$PROJECT_DIR$/test-compiled.js" />
         <item url="file://$PROJECT_DIR$/loader-compiled.js" />
         <item url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
         <item url="file://$PROJECT_DIR$/gameManager-compiled.js" />
+        <item url="file://$PROJECT_DIR$/beatmapManager-compiled.js" />
+        <item url="file://$PROJECT_DIR$/game_before-compiled.js" />
+        <item url="file://$PROJECT_DIR$/sceneManager-compiled.js" />
+        <item url="file://$PROJECT_DIR$/lib/howler.core.min-compiled.js" />
       </sourceFilesUrls>
     </properties>
     <CLASSES>
+      <root url="file://$PROJECT_DIR$/gameController-compiled.js" />
       <root url="file://$PROJECT_DIR$/judge-compiled.js" />
       <root url="file://$PROJECT_DIR$/test-compiled.js" />
       <root url="file://$PROJECT_DIR$/loader-compiled.js" />
       <root url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
       <root url="file://$PROJECT_DIR$/gameManager-compiled.js" />
+      <root url="file://$PROJECT_DIR$/beatmapManager-compiled.js" />
+      <root url="file://$PROJECT_DIR$/legacy/game_before-compiled.js" />
+      <root url="file://$PROJECT_DIR$/sceneManager-compiled.js" />
+      <root url="file://$PROJECT_DIR$/lib/howler.core.min-compiled.js" />
     </CLASSES>
     <SOURCES />
   </library>

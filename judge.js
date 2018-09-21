@@ -12,7 +12,7 @@ class Judge {
         this.holdEndGood = 120;
     }
 
-    getLanesToJudge(judgeAreaCenters, radii, canvasTouchCoords, ifOneHot=false) {
+    getJudgeLanes(judgeAreaCenters, radii, canvasTouchCoords, ifOneHot=false) {
         let lanesToJudge = [];
         let oneHot = [false, false, false, false, false, false, false, false, false];
         let dX, dY, distance;
@@ -34,6 +34,72 @@ class Judge {
                 if (oneHot[i] == true) lanesToJudge.push(i);
             }
             return lanesToJudge;
+        }
+    }
+
+    handleTouchStart(e) {
+        e.preventDefault();
+        let touchTiming = Date.now() - this.startTiming;
+        let canvasTouchCoords = [];
+        let canvasX, canvasY;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
+            canvasX = (e.changedTouches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
+            canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
+            canvasTouchCoords.push([canvasX, canvasY]);
+        }
+        // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
+        let judgement, holdJudgement;
+        let lanesToJudge = this.judge.getJudgeLanes(this.judgeAreaCenters, this.judgeAreaRadii,
+            canvasTouchCoords);
+
+        if (lanesToJudge.length != 0) {
+            for (let lane of lanesToJudge) {
+                let ptr = this.judgePtrsOfITS[lane];
+                if (ptr < this.lengthsOfITS[lane]) {
+                    let idxToJudge = this.indicesForTS[lane][ptr];
+                    let noteToJudge = this.notesInTmgOrd[lane][idxToJudge];
+                    let noteType = noteToJudge[2];
+                    let noteTiming = noteToJudge[0];
+                    if (noteType == 0) {
+                        judgement = this.judge.getJudgement(touchTiming, noteTiming);
+                    }
+                    else if (noteType == 1) {
+                        judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                    }
+                    else if (noteType == 3) {
+                        holdJudgement = this.judge.getJudgement(touchTiming, noteTiming);
+                    }
+                    else if (noteType == 4) {
+                        holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
+                    }
+                    // 成功判定时将existence置为false，在每帧更新时移动指针
+                    if (judgement != null) {
+                        this._executeJudgeEffect(judgement);
+                        this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                    }
+                    if (holdJudgement != null) {
+                        let holdTime = noteToJudge[6] - noteTiming;
+                        this._executeJudgeEffect(holdJudgement);
+                        this.notesInTmgOrd[lane][idxToJudge][4] = false;
+                        this.notesInTmgOrd[lane][idxToJudge][5] = true;
+                        this.onhold[lane] = idxToJudge;
+
+                        //this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
+
+                        let that = this;
+                        setTimeout(function (lane, that) {
+                            let onholdIdx = that.onhold[lane];
+                            if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
+                                that._executeJudgeEffect("perfect");
+                                that.notesInTmgOrd[lane][onholdIdx][5] = false;
+                                that.onhold[lane] = -1;
+                            }
+                        }, holdTime, lane, that);
+
+                    }
+                }
+            }
         }
     }
 

@@ -1,89 +1,80 @@
-
 class Loader {
 
-    loadImage(src) {
-        if (typeof src == "string") {
-            return new Promise((resolve, reject) => {
-                let img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = error => reject(error);
-                img.src = src;
-            });
-        }
-        else if (typeof src == "object" && src instanceof Array) {
-            let promises = [];
-            for (let srcStr of src) {
-                promises.push(this.loadImage(srcStr));
-            }
-            return Promise.all(promises);
-        }
-        else {
-            return new Promise((resolve, reject) => {
-                reject(Error("image src is not a path!"));
-            });
+    constructor() {
+        this.loadedAssets = {};
+    }
+
+    get loadFuncMap() {
+        return {
+            "image": this.loadImage,
+            "sound": this.loadSound,
+            "json": this.loadJson
+        };
+    }
+
+    getAsset(key) {
+        if (this.loadedAssets[key] != null) {
+            return this.loadedAssets[key];
+        } else {
+            console.warn(key + " does not exist");
+            return false;
         }
     }
 
-    loadSound(src) {
-        if (typeof src == "string") {
-            return new Promise((resolve, reject) => {
-                //window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                let context = new AudioContext();
-                let xhr = new XMLHttpRequest();
-                xhr.open("get", src);
-                xhr.responseType = "arraybuffer";
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        context.decodeAudioData(xhr.response, buffer => {
-                            resolve(buffer);
-                        });
-                    }
-                };
-                xhr.onerror = error => reject(error);
-                xhr.send();
+    loadBatch(assets) { // assets like {"image": {key: path, key: path}, "sound": {}, "json": {}}
+        let promises = [];
+        Object.keys(assets).forEach(type => {
+            Object.keys(assets[type]).forEach(key => {
+                var src = assets[type][key];
+                var loadFunc = this.loadFuncMap[type].bind(this);
+                promises.push(loadFunc(src, key));
             });
-        }
-        else if (typeof src == "object" && src instanceof Array) {
-            let promises = [];
-            for (let srcStr of src) {
-                promises.push(this.loadSound(srcStr));
-            }
-            return Promise.all(promises);
-        }
-        else {
-            return new Promise((resolve, reject) => {
-                reject(Error("sound src is not a path!"));
-            });
-        }
+        });
+        return Promise.all(promises);
     }
 
-    loadJson(src) {
-        if (typeof src == "string") {
-            return new Promise((resolve, reject) => {
-                let xhr = new XMLHttpRequest();
-                xhr.open("get", src);
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        let data = JSON.parse(xhr.responseText);
-                        resolve(data);
-                    }
-                };
-                xhr.onerror = error => reject(error);
-                xhr.send();
-            });
-        }
-        else if (typeof src == "object" && src instanceof Array) {
-            let promises = [];
-            for (let srcStr of src) {
-                promises.push(this.loadJson(srcStr));
-            }
-            return Promise.all(promises);
-        }
-        else {
-            return new Promise((resolve, reject) => {
-                reject(Error("json src is not a path!"));
-            });
-        }
+    loadImage(src, key) {
+        return new Promise((resolve, reject) => {
+            let img = new Image();
+            img.onload = () => {
+                this.loadedAssets[key] = img;
+                resolve(img);
+            };
+            img.onerror = error => reject(error);
+            img.src = src;
+        });
+    }
+
+    loadSound(src, key) {
+        return new Promise((resolve, reject) => {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            let ctx = new AudioContext();
+            let xhr = new XMLHttpRequest();
+            xhr.open("get", src);
+            xhr.responseType = "arraybuffer";
+            xhr.onload = () => {
+                ctx.decodeAudioData(xhr.response, buffer => {
+                    this.loadedAssets[key] = buffer;
+                    resolve(buffer);
+                });
+            };
+            xhr.onerror = error => reject(error);
+            xhr.send();
+        });
+    }
+
+    loadJson(src, key) {
+        return new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest();
+            xhr.open("get", src);
+            xhr.onload = () => {
+                let data = JSON.parse(xhr.responseText);
+                this.loadedAssets[key] = data;
+                resolve(data);
+            };
+            xhr.onerror = error => reject(error);
+            xhr.send();
+        });
     }
 
 }

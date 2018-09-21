@@ -1,0 +1,26 @@
+{
+  "noteSpr":{
+    "left":396,
+    "top":175,
+    "width":128,
+    "height":128
+  },
+  "slideNoteSpr":{
+    "left":396,
+    "top":337,
+    "width":128,
+    "height":128
+  },
+  "multiMarkSpr":{
+    "left":242,
+    "top":417,
+    "width":128,
+    "height":24
+  },
+  "tailSpr":{
+    "left":255,
+    "top":275,
+    "width":128,
+    "height":128
+  }
+}
