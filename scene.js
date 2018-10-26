@@ -1,12 +1,18 @@
 class Scene {
-    constructor(cvsWidth, cvsHeight) {
+    constructor(cvsWidth, cvsHeight, touchScaling=1.2) {
         this.cvsWidth = cvsWidth;
         this.cvsHeight = cvsHeight;
+        this.touchScaling = touchScaling;
+        this.controller = null;
 
         this.scaling = 1;
         this.cvsOffsetLeft = 0;
         this.cvsOffsetTop = 0;
         this.lanePaths = [];
+
+        //this.debugger = new Debugger();
+        //this.debugger.createDebugBoxes(10);
+        //this.debugger.logMessage(0, "scene");
     }
 
     createGameScene(bgImage, skinImage, skinData) {
@@ -28,12 +34,22 @@ class Scene {
         this.gameDiv.appendChild(this.jdgAreaCvs);
         this.gameDiv.appendChild(this.beatmapCvs);
 
-        _setCanvas(this.bgCvs, this.cvsWidth, this.cvsHeight);
-        _setCanvas(this.jdgAreaCvs, this.cvsWidth, this.cvsHeight);
-        _setCanvas(this.beatmapCvs, this.cvsWidth, this.cvsHeight);
+        this._setCanvas(this.bgCvs);
+        this._setCanvas(this.jdgAreaCvs);
+        this._setCanvas(this.beatmapCvs);
 
         this._resize();
         window.onresize = () => this._resize();
+    }
+
+    initStartButton() {
+        this.startDiv = document.createElement("div");
+        this.gameDiv.appendChild(this.startDiv);
+        this._setStartDiv(this.startDiv);
+    }
+
+    setController(controller) {
+        this.controller = controller;
     }
 
     initLanePaths() {
@@ -57,6 +73,9 @@ class Scene {
     }
 
     drawJdgCircles() {
+        if (this.lanePaths.length == 0) {
+            console.error("need lanePaths initialized!")
+        }
         this.jdgAreaCtx.fillStyle = "#FFE699";
         for (let lanePath of this.lanePaths) {
             let circle = lanePath.jdgCircle;
@@ -67,29 +86,45 @@ class Scene {
         }
     }
 
-    animate(beatmap, controller) {
-        if (controller.update(beatmap)) {
-            // this._updateJudgeIndices(beatmap);
-            // let group = beatmap.groups[0];
-            // console.log(group.currPos, group.lanes[0].backPtrOfIPO, group.lanes[0].frontPtrOfIPO);
-            this._drawBeatmapFrame(beatmap);
+    animate() {
+        if (this.controller.update()) {
+            this._drawBeatmapFrame(this.controller.beatmap);
         }
-        requestAnimationFrame(this.animate.bind(this, beatmap, controller));
+        requestAnimationFrame(this.animate.bind(this));
+    }
+
+    getDefaultOneHot() {
+        return new Array(this.lanePaths.length).fill(false);
+    }
+
+    addActive(oneHotArr, touchX, touchY) {
+        //this.debugger.logMessage(1, "start_" + oneHotArr);
+        for (let idx in this.lanePaths) {
+            oneHotArr[idx] = oneHotArr[idx] ||
+                this.lanePaths[idx].jdgCircle.checkInside(touchX, touchY, this.touchScaling);
+        }
+        //this.debugger.logMessage(2, "end_" + oneHotArr);
+    }
+
+    page2cvsX(pageX) {
+        return (pageX - this.cvsOffsetLeft) / this.scaling;
+    }
+
+    page2cvsY(pageY) {
+        return (pageY - this.cvsOffsetTop) / this.scaling;
     }
 
     _drawBeatmapFrame(beatmap) {
         this.beatmapCtx.clearRect(0, 0, this.cvsWidth, this.cvsHeight);
-        for (let group of beatmap.groups) {
-            for (let laneIdx in group.lanes) {
-                let lane = group.lanes[laneIdx];
-                let lanePath = this.lanePaths[laneIdx];
-                for (let ptr = lane.backPtrOfIPO; ptr < lane.frontPtrOfIPO; ptr++) {
-                    let noteIdx = lane.indicesInPosOrd[ptr];
-                    let note = lane.notesInTmgOrd[noteIdx];
-                    if (note.isExist) {
-                        //console.log(laneIdx, "draw note");
-                        this._drawNote(note, group.currPos, lanePath.startCircle, lanePath.jdgCircle);
-                    }
+        for (let laneIdx in beatmap.lanes) {
+            let lane = beatmap.lanes[laneIdx];
+            let lanePath = this.lanePaths[laneIdx];
+            for (let ptr = lane.backPtrOfIPO; ptr < lane.frontPtrOfIPO; ptr++) {
+                let noteIdx = lane.indicesInPosOrd[ptr];
+                let note = lane.notesInTmgOrd[noteIdx];
+                if (!note.isPassed()) {
+                    //console.log(laneIdx, "draw note");
+                    this._drawNote(note, beatmap.getCurrPos(note.group), lanePath.startCircle, lanePath.jdgCircle);
                 }
             }
         }
@@ -99,28 +134,28 @@ class Scene {
         //console.log("draw");
         let scalingFromStart = gamePos - note.pos + 1; // finishedDist / AllDist
         let noteCircle = Circle.getScaledCircle(startCircle, jdgCircle, scalingFromStart);
-        if (note.noteType > 2) {
+        if (note.isHold) {
             let headCircle, tailCircle;
             let drawHead = true;
-            if (note.tailPos > gamePos + 1) {
+            if (note.tailPos < gamePos + 1) {
                 let tailScalingFromStart = gamePos - note.tailPos + 1;
                 tailCircle = Circle.getScaledCircle(startCircle, jdgCircle, tailScalingFromStart);
             } else {
                 tailCircle = startCircle;
             }
-            if (!note.isOnHold) {
-                headCircle = noteCircle;
-            } else {
+            if (note.isJudging()) {
                 headCircle = jdgCircle;
                 drawHead = false;
+            } else {
+                headCircle = noteCircle;
             }
             if (drawHead) {
-                this._drawNoteSkin(headCircle, note.noteType, note.multiMark);
+                this._drawNoteSkin(headCircle, note.type, note.multiMark);
             }
             this._drawHoldLight(headCircle, tailCircle);
             this._drawHoldTail(tailCircle);
         } else {
-            this._drawNoteSkin(noteCircle, note.noteType, note.multiMark);
+            this._drawNoteSkin(noteCircle, note.type, note.multiMark);
         }
     }
 
@@ -150,10 +185,10 @@ class Scene {
     _drawHoldLight(headCircle, tailCircle) {
         let headX = headCircle.centerX;
         let headY = headCircle.centerY;
-        let headR = headCircle.centerY;
+        let headR = headCircle.radius;
         let tailX = tailCircle.centerX;
         let tailY = tailCircle.centerY;
-        let tailR = tailCircle.centerY;
+        let tailR = tailCircle.radius;
         let D = Math.sqrt((tailX-headX)*(tailX-headX) + (tailY-headY)*(tailY-headY));
         let headR_D = headR / D;
         let tailR_D = tailR / D;
@@ -210,6 +245,30 @@ class Scene {
         }
     }
 
+    _setCanvas(cvs) {
+        cvs.width = this.cvsWidth;
+        cvs.height = this.cvsHeight;
+        cvs.style.width = "100%";
+        cvs.style.height = "100%";
+    }
+
+    _setStartDiv(div) {
+        div.style.left = "42%";
+        div.style.top = "40%";
+        div.style.width = "16%";
+        div.style.height = "10%";
+        div.style.zIndex = 10;
+
+        div.style.color = "white";
+        div.style.fontSize = "30px";
+        div.style.textAlign = "center";
+        div.innerText = "Start!";
+        div.addEventListener("click", () => {
+            div.style.zIndex = -1;
+            this.controller.start(this);
+        });
+    }
+
 }
 
 class LanePath {
@@ -224,6 +283,12 @@ class Circle {
         this.centerX = centerX;
         this.centerY = centerY;
         this.radius = radius;
+    }
+
+    checkInside(touchX, touchY, scaling) {
+        let dX = touchX - this.centerX;
+        let dY = touchY - this.centerY;
+        return dX*dX + dY*dY < this.radius * this.radius * scaling * scaling;
     }
 
     static getScaledCircle(startCircle, endCircle, scalingFromStart) {
@@ -274,14 +339,7 @@ function getCoordsMaiMai(startX=512, startY=342, startR=0, destR=56, laneLength=
         startCircleCenters.push([startX, startY]);
         startCircleRadii.push(startR);
         jdgCircleCenters.push([centerX, centerY]);
-        jdgCircleRadii.push(destR)
+        jdgCircleRadii.push(destR);
     }
     return [startCircleCenters, startCircleRadii, jdgCircleCenters, jdgCircleRadii];
-}
-
-function _setCanvas(cvs, width, height) {
-    cvs.width = width;
-    cvs.height = height;
-    cvs.style.width = "100%";
-    cvs.style.height = "100%";
 }

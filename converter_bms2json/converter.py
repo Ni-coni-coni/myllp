@@ -182,9 +182,9 @@ def sort_timing_note_lists(timing_note_lists):
 
 def generate_json_with_speed_line(timing_note_lists, json_filename):
     data = json.dumps(timing_note_lists)
-    whole_json_data = '{"speedLines":[[0,1.3]],"notes":' + data + '}'
+    whole_json_data = '{"spdLinesData":[[0,1.3]],"lanesData":' + data + '}'
     print(whole_json_data)
-    with open('json/' + json_filename, mode='w+') as f:
+    with open(json_filename, mode='w+') as f:
         f.write(whole_json_data)
     f.close()
 
@@ -212,8 +212,9 @@ def convert(bms_filename, json_filename):
 
 
 if __name__ == '__main__':
-    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/circle.bms'
-    json_file = 'circle.json'
+    file = 'zonghe'
+    bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/' + file + '.bms'
+    json_file = 'json/' + file + '.json'
     convert(bms_file, json_file)
 
 

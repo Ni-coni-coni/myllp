@@ -281,18 +281,18 @@ class Game {
                     if (ptr < this.lengthsOfITS[lane]) {
                         let idxToJudge = this.indicesForTS[lane][ptr];
                         let noteToJudge = this.notesInTmgOrd[lane][idxToJudge];
-                        let noteType = noteToJudge[2];
+                        let type = noteToJudge[2];
                         let noteTiming = noteToJudge[0];
-                        if (noteType == 0) {
-                            judgement = this.judge.getJudgement(touchTiming, noteTiming);
+                        if (type == 0) {
+                            judgement = this.judge._getJudgement(touchTiming, noteTiming);
                         }
-                        else if (noteType == 1) {
+                        else if (type == 1) {
                             judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
                         }
-                        else if (noteType == 3) {
-                            holdJudgement = this.judge.getJudgement(touchTiming, noteTiming);
+                        else if (type == 3) {
+                            holdJudgement = this.judge._getJudgement(touchTiming, noteTiming);
                         }
-                        else if (noteType == 4) {
+                        else if (type == 4) {
                             holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
                         }
                         // 成功判定时将existence置为false，在每帧更新时移动指针
@@ -354,13 +354,13 @@ class Game {
                         let noteType = noteToJudge[2];
                         let noteTiming = noteToJudge[0];
                         if (noteType == 0) {
-                            judgement = this.judge.getJudgement(touchTiming, noteTiming);
+                            judgement = this.judge._getJudgement(touchTiming, noteTiming);
                         }
                         else if (noteType == 1) {
                             judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
                         }
                         else if (noteType == 3) {
-                            holdJudgement = this.judge.getJudgement(touchTiming, noteTiming);
+                            holdJudgement = this.judge._getJudgement(touchTiming, noteTiming);
                         }
                         else if (noteType == 4) {
                             holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
@@ -421,6 +421,7 @@ class Game {
                 canvasTouchCoords);
             let lanesOnTouchOneHot = this.judge.getJudgeLanes(this.judgeAreaCenters, this.judgeAreaRadii,
                 canvasOnTouchCoords, true);
+
             if (lanesToJudge.length != 0) {
                 for (let lane of lanesToJudge) {
                     let ptr = this.judgePtrsOfITM[lane];
@@ -747,7 +748,7 @@ class Game {
                         }
                     }
                 } else if (this.notesInTmgOrd[i][noteIdx][2] >= 3 && this.notesInTmgOrd[i][noteIdx][5]) {
-                    // isExist=False noteType=hold isOnHold=True
+                    // visible=False type=hold isOnHold=True
                     notePos = this.notesInTmgOrd[i][noteIdx][1];
                     noteType = this.notesInTmgOrd[i][noteIdx][2];
                     isMulti = this.notesInTmgOrd[i][noteIdx][3];

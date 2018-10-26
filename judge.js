@@ -1,154 +1,195 @@
 class Judge {
 
     constructor() {
-        this.perfect = 30;
-        this.great = 60;
-        this.good = 120;
-        this.slidePerfect = 60;
-        this.slideGreat = 90;
-        this.slideGood = 120;
-        this.holdEndPerfect = 40;
-        this.holdEndGreat = 70;
-        this.holdEndGood = 120;
+        this.scene = null;
+
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.audioContext = new AudioContext();
+
+        this.myDebugger = new Debugger();
+        this.myDebugger.createDebugDiv();
+        this.myDebugger.logMsg("Judge!!");
+
     }
 
-    getJudgeLanes(judgeAreaCenters, radii, canvasTouchCoords, ifOneHot=false) {
-        let lanesToJudge = [];
-        let oneHot = [false, false, false, false, false, false, false, false, false];
-        let dX, dY, distance;
-        for (let i = 0; i < judgeAreaCenters.length; i++) {
-            for (let touch of canvasTouchCoords) {
-                dX = touch[0] - judgeAreaCenters[i][0];
-                dY = touch[1] - judgeAreaCenters[i][1];
-                distance = Math.pow(dX*dX + dY*dY, 0.5);
-                if (distance < radii[i] * 1.2) {
-                    oneHot[i] = true;
-                }
-            }
-        }
-        if (ifOneHot) {
-            return oneHot;
-        }
-        else {
-            for (let i = 0; i < judgeAreaCenters.length; i++) {
-                if (oneHot[i] == true) lanesToJudge.push(i);
-            }
-            return lanesToJudge;
-        }
+    setSounds(perfect, great, good) {
+        this.perfectSound = perfect;
+        this.greatSound = great;
+        this.goodSound = good;
+    }
+
+    setScene(scene) {
+        this.scene = scene;
+    }
+
+    addTouchEvents() {
+        this.scene.beatmapCvs.addEventListener("touchstart", this.handleTouchStart.bind(this), false);
+        this.scene.beatmapCvs.addEventListener("touchend", this.handleTouchEnd.bind(this), false);
+        this.scene.beatmapCvs.addEventListener("touchmove", this.handleTouchMove.bind(this), false);
     }
 
     handleTouchStart(e) {
         e.preventDefault();
-        let touchTiming = Date.now() - this.startTiming;
-        let canvasTouchCoords = [];
-        let canvasX, canvasY;
+        let touchTmg = this.scene.controller.getExactTmg();
+        let oneHotActiveLanes = this._getOneHotActiveLanes(e);
+        this._judgeNote(touchTmg, oneHotActiveLanes, "tap");
+    }
+
+    handleTouchEnd(e) {
+        e.preventDefault();
+        let touchTmg = this.scene.controller.getExactTmg();
+        let oneHotLanesOnTouch = this._getOneHotLanesOnTouch(e);
+        this._judgeAway(touchTmg, oneHotLanesOnTouch);
+    }
+
+    handleTouchMove(e) {
+        e.preventDefault();
+        let touchTmg = this.scene.controller.getExactTmg();
+        let oneHotActiveLanes = this._getOneHotActiveLanes(e);
+        let oneHotLanesOnTouch = this._getOneHotLanesOnTouch(e);
+        this._judgeNote(touchTmg, oneHotActiveLanes, "slide");
+        this._judgeAway(touchTmg, oneHotLanesOnTouch);
+    }
+
+    _getOneHotActiveLanes(e) {
+        let oneHotActiveLanes = this.scene.getDefaultOneHot();
         for (let i = 0; i < e.changedTouches.length; i++) {
-            // this.refs.debugDiv.innerText = "touch" + e.touches[i].pageX;
-            canvasX = (e.changedTouches[i].pageX - this.canvasOffsetLeft) / this.resizeRatio;
-            canvasY = (e.changedTouches[i].pageY - this.canvasOffsetTop) / this.resizeRatio;
-            canvasTouchCoords.push([canvasX, canvasY]);
+            let cvsX = this.scene.page2cvsX(e.changedTouches[i].pageX);
+            let cvsY = this.scene.page2cvsY(e.changedTouches[i].pageY);
+            this.scene.addActive(oneHotActiveLanes, cvsX, cvsY);
         }
-        // this.refs.debugDiv.innerText = "canvasX:" + canvasX + "\ncanvasY:" + canvasY;
-        let judgement, holdJudgement;
-        let lanesToJudge = this.judge.getJudgeLanes(this.judgeAreaCenters, this.judgeAreaRadii,
-            canvasTouchCoords);
+        return oneHotActiveLanes;
+    }
 
-        if (lanesToJudge.length != 0) {
-            for (let lane of lanesToJudge) {
-                let ptr = this.judgePtrsOfITS[lane];
-                if (ptr < this.lengthsOfITS[lane]) {
-                    let idxToJudge = this.indicesForTS[lane][ptr];
-                    let noteToJudge = this.notesInTmgOrd[lane][idxToJudge];
-                    let noteType = noteToJudge[2];
-                    let noteTiming = noteToJudge[0];
-                    if (noteType == 0) {
-                        judgement = this.judge.getJudgement(touchTiming, noteTiming);
-                    }
-                    else if (noteType == 1) {
-                        judgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
-                    }
-                    else if (noteType == 3) {
-                        holdJudgement = this.judge.getJudgement(touchTiming, noteTiming);
-                    }
-                    else if (noteType == 4) {
-                        holdJudgement = this.judge.getSlideJudgement(touchTiming, noteTiming);
-                    }
-                    // 成功判定时将existence置为false，在每帧更新时移动指针
-                    if (judgement != null) {
-                        this._executeJudgeEffect(judgement);
-                        this.notesInTmgOrd[lane][idxToJudge][4] = false;
-                    }
-                    if (holdJudgement != null) {
-                        let holdTime = noteToJudge[6] - noteTiming;
-                        this._executeJudgeEffect(holdJudgement);
-                        this.notesInTmgOrd[lane][idxToJudge][4] = false;
-                        this.notesInTmgOrd[lane][idxToJudge][5] = true;
-                        this.onhold[lane] = idxToJudge;
+    _getOneHotLanesOnTouch(e) {
+        let oneHotLanesOnTouch = this.scene.getDefaultOneHot();
+        for (let i = 0; i < e.touches.length; i++) {
+            let cvsX = this.scene.page2cvsX(e.touches[i].pageX);
+            let cvsY = this.scene.page2cvsY(e.touches[i].pageY);
+            this.scene.addActive(oneHotLanesOnTouch, cvsX, cvsY);
+        }
+        return oneHotLanesOnTouch;
+    }
 
-                        //this.refs.debugDiv1.innerText = this.onhold.join(","); // TODO debug
-
-                        let that = this;
-                        setTimeout(function (lane, that) {
-                            let onholdIdx = that.onhold[lane];
-                            if (onholdIdx != -1) {  // TODO 考虑条尾是slide的情况
-                                that._executeJudgeEffect("perfect");
-                                that.notesInTmgOrd[lane][onholdIdx][5] = false;
-                                that.onhold[lane] = -1;
-                            }
-                        }, holdTime, lane, that);
-
+    _judgeNote(touchTmg, oneHotActiveLanes, jdgType) {
+        for (let laneIdx in oneHotActiveLanes) {
+            if (!oneHotActiveLanes[laneIdx]) continue;
+            let lane = this.scene.controller.beatmap.lanes[laneIdx];
+            let jdgPtr, jdgIndices;
+            if (jdgType == "tap")  {
+                jdgPtr = lane.jdgPtrOfITS;
+                jdgIndices = lane.indicesForTS;
+            }
+            if (jdgType == "slide") {
+                jdgPtr = lane.jdgPtrOfITM;
+                jdgIndices = lane.indicesForTM;
+            }
+            if (jdgPtr == jdgIndices.length) continue;
+            let idx = jdgIndices[jdgPtr];
+            let note = lane.notesInTmgOrd[idx];
+            let judgement = this._getJudgement(touchTmg, note);
+            if (judgement == 0) continue;
+            this._execJdgEffect(judgement);
+            //this.myDebugger.logMsg(touchTmg, judgement, laneIdx, lane.jdgPtrOfITS);
+            if (note.isHold) {
+                note.setJudging();
+                lane.setHoldNote(idx);
+                let that = this;
+                setTimeout(function (note, lane, that) {
+                    if (note.isJudging()) {  // TODO 考虑条尾是slide的情况
+                        that._execJdgEffect(3);
+                        note.setPassed();
+                        lane.freeHoldNote();
                     }
-                }
+                }, note.tailTmg - note.tmg, note, lane, that);
+            } else {
+                note.setPassed();
             }
         }
     }
 
-    getJudgement(touchTiming, noteTiming) {
-        let deviation = Math.abs(touchTiming - noteTiming);
-        if (deviation > this.good) {
-            return null;
-        }
-        else if (deviation > this.great) {
-            return "good";
-        }
-        else if (deviation > this.perfect) {
-            return "great";
-        }
-        else {
-            return "perfect";
+    _judgeAway(touchTmg, oneHotLanesOnTouch) {
+        for (let laneIdx in oneHotLanesOnTouch) {
+            let lane = this.scene.controller.beatmap.lanes[laneIdx];
+            if (lane.checkOnHold() && !oneHotLanesOnTouch[laneIdx]) {
+                let note = lane.getHoldNote();
+                let judgement = this._getJudgement(touchTmg, note, true);
+                this._execJdgEffect(judgement);
+                note.setPassed();
+                lane.freeHoldNote();
+            }
         }
     }
 
-    getSlideJudgement(touchTiming, noteTiming) {
-        let deviation = Math.abs(touchTiming - noteTiming);
-        if (deviation > this.slideGood) {
-            return null;
+    _getJudgement(touchTmg, note, tail=false) {
+        let jdgType, deviation;
+        if (!tail) {
+            if (note.type == 0 || note.type == 3) {
+                jdgType = "tap";
+            } else if (note.type == 1 || note.type == 4) {
+                jdgType = "slide";
+            } else {
+                console.error("not implemented yet!")
+            }
+            deviation = Math.abs(touchTmg - note.tmg);
+        } else {
+            jdgType = "holdTail";
+            deviation = Math.abs(touchTmg - note.tailTmg);
         }
-        else if (deviation > this.slideGreat) {
-            return "good";
+
+        if (deviation > Judge.jdgRange[jdgType].good) {
+            return 0;
         }
-        else if (deviation > this.slidePerfect) {
-            return "great";
+        else if (deviation > Judge.jdgRange[jdgType].great) {
+            return 1;
+        }
+        else if (deviation > Judge.jdgRange[jdgType].perfect) {
+            return 2;
         }
         else {
-            return "perfect";
+            return 3;
         }
     }
 
-    getHoldEndJudgement(touchTiming, noteTiming) {
-        let deviation = Math.abs(touchTiming - noteTiming);
-        if (deviation > this.holdEndGood) {
-            return null;
+    _execJdgEffect(judgement) {
+        switch (judgement) {
+            case 3:
+                this._playSound(this.perfectSound);
+                break;
+            case 2:
+                this._playSound(this.greatSound);
+                break;
+            case 1:
+                this._playSound(this.goodSound);
+                break;
+            default:
+                break;
         }
-        else if (deviation > this.holdEndGreat) {
-            return "good";
-        }
-        else if (deviation > this.holdEndPerfect) {
-            return "great";
-        }
-        else {
-            return "perfect";
-        }
+    }
+
+    _playSound(buffer) {
+        let source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this.audioContext.destination);
+        source.start(0);
     }
 
 }
+
+Judge.jdgRange = {
+    tap: {
+        perfect: 30,
+        great: 80,
+        good: 160
+    },
+    slide: {
+        perfect: 40,
+        great: 100,
+        good: 160
+    },
+    holdTail: {
+        perfect: 50,
+        great: 120,
+        good: 200
+    }
+};
