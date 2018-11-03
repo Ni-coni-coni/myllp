@@ -1,8 +1,11 @@
+
+
 class Scene {
-    constructor(cvsWidth, cvsHeight, touchScaling=1.2) {
+    constructor(cvsWidth, cvsHeight, largeScaling=1.2, smallScaling=1.0) {
         this.cvsWidth = cvsWidth;
         this.cvsHeight = cvsHeight;
-        this.touchScaling = touchScaling;
+        this.largeScaling = largeScaling;
+        this.smallScaling = smallScaling;
         this.controller = null;
 
         this.scaling = 1;
@@ -10,9 +13,6 @@ class Scene {
         this.cvsOffsetTop = 0;
         this.lanePaths = [];
 
-        //this.debugger = new Debugger();
-        //this.debugger.createDebugBoxes(10);
-        //this.debugger.logMessage(0, "scene");
     }
 
     createGameScene(bgImage, skinImage, skinData) {
@@ -20,23 +20,36 @@ class Scene {
         this.skinImage = skinImage;
         this.skinData = skinData;
         this.gameDiv = document.createElement("div");
+
         this.bgCvs = document.createElement("canvas");
         this.jdgAreaCvs = document.createElement("canvas");
         this.beatmapCvs = document.createElement("canvas");
+        this.effectCvs = document.createElement("canvas");
+        this.touchCvs = document.createElement("canvas");
+
         this.bgCtx = this.bgCvs.getContext("2d");
         this.jdgAreaCtx = this.jdgAreaCvs.getContext("2d");
         this.beatmapCtx = this.beatmapCvs.getContext("2d");
+        this.effectCtx = this.effectCvs.getContext("2d");
+
         this.bgCvs.style.zIndex = 0;
         this.jdgAreaCvs.style.zIndex = 1;
         this.beatmapCvs.style.zIndex = 2;
+        this.effectCvs.style.zIndex = 3;
+        this.touchCvs.style.zIndex = 4;
+
         document.body.appendChild(this.gameDiv);
         this.gameDiv.appendChild(this.bgCvs);
         this.gameDiv.appendChild(this.jdgAreaCvs);
         this.gameDiv.appendChild(this.beatmapCvs);
+        this.gameDiv.appendChild(this.effectCvs);
+        this.gameDiv.appendChild(this.touchCvs);
 
         this._setCanvas(this.bgCvs);
         this._setCanvas(this.jdgAreaCvs);
         this._setCanvas(this.beatmapCvs);
+        this._setCanvas(this.effectCvs);
+        this._setCanvas(this.touchCvs);
 
         this._resize();
         window.onresize = () => this._resize();
@@ -97,13 +110,21 @@ class Scene {
         return new Array(this.lanePaths.length).fill(false);
     }
 
-    addActive(oneHotArr, touchX, touchY) {
-        //this.debugger.logMessage(1, "start_" + oneHotArr);
+    addActive(oneHotArr, touchX, touchY, touchScaling) {
+        let UsedScaling;
+        if (touchScaling == "large") {
+            UsedScaling = this.largeScaling;
+        }
+        else if (touchScaling == "small") {
+            UsedScaling = this.smallScaling;
+        }
+        else {
+            console.error("touch type error");
+        }
         for (let idx in this.lanePaths) {
             oneHotArr[idx] = oneHotArr[idx] ||
-                this.lanePaths[idx].jdgCircle.checkInside(touchX, touchY, this.touchScaling);
+                this.lanePaths[idx].jdgCircle.checkInside(touchX, touchY, UsedScaling);
         }
-        //this.debugger.logMessage(2, "end_" + oneHotArr);
     }
 
     page2cvsX(pageX) {
@@ -116,6 +137,7 @@ class Scene {
 
     _drawBeatmapFrame(beatmap) {
         this.beatmapCtx.clearRect(0, 0, this.cvsWidth, this.cvsHeight);
+        this.effectCtx.clearRect(0, 0, this.cvsWidth, this.cvsHeight);
         for (let laneIdx in beatmap.lanes) {
             let lane = beatmap.lanes[laneIdx];
             let lanePath = this.lanePaths[laneIdx];
@@ -127,7 +149,47 @@ class Scene {
                     this._drawNote(note, beatmap.getCurrPos(note.group), lanePath.startCircle, lanePath.jdgCircle);
                 }
             }
+            let timeOut = 0;
+            for (let effect of lanePath.effects) {
+                timeOut += this._drawEffect(effect[0], effect[1], lanePath.jdgCircle);
+            }
+            for (let i = 0; i < timeOut; i++) {
+                lanePath.removeEffect();
+            }
         }
+    }
+
+    _drawEffect(effectType, effectStartTmg, effectStartCircle, effectDuring=200) {
+        let spr, startScaling, endScaling;
+        let effectTmg = this.controller.frameTmg - effectStartTmg;
+        let alpha = 1 - effectTmg / effectDuring;
+        alpha = alpha < 0 ? 0 : alpha;
+        let effectCenterX = effectStartCircle.centerX;
+        let effectCenterY = effectStartCircle.centerY;
+        switch (effectType) {
+            case 3:
+                spr = this.skinData["perfectSpr"];
+                startScaling = 1; endScaling = 2.2;
+                break;
+            case 2:
+                spr = this.skinData["greatSpr"];
+                startScaling = 1; endScaling = 1.7;
+                break;
+            case 1:
+                spr = this.skinData["goodSpr"];
+                startScaling = 1; endScaling = 1.7;
+                break;
+            default:
+                console.error("effect type 0!");
+                break;
+        }
+        let scaling = startScaling + (endScaling - startScaling) * (effectTmg / effectDuring);
+        let effectR = effectStartCircle.radius * scaling;
+        this.effectCtx.globalAlpha = alpha;
+        this.effectCtx.drawImage(
+            this.skinImage, spr["left"], spr["top"], spr["width"], spr["height"],
+            effectCenterX - effectR, effectCenterY - effectR, effectR*2, effectR*2);
+        return effectTmg < effectDuring ? 0 : 1;
     }
 
     _drawNote(note, gamePos, startCircle, jdgCircle) {
@@ -152,7 +214,7 @@ class Scene {
             if (drawHead) {
                 this._drawNoteSkin(headCircle, note.type, note.multiMark);
             }
-            this._drawHoldLight(headCircle, tailCircle);
+            this._drawHoldLight(headCircle, tailCircle, note.tmg, note.isHold && note.isJudging());
             this._drawHoldTail(tailCircle);
         } else {
             this._drawNoteSkin(noteCircle, note.type, note.multiMark);
@@ -182,32 +244,43 @@ class Scene {
         }
     }
 
-    _drawHoldLight(headCircle, tailCircle) {
-        let headX = headCircle.centerX;
-        let headY = headCircle.centerY;
+    _drawHoldLight(headCircle, tailCircle, noteTmg, isholding, featherRatio=0.05, segment=10) {
+        let headX = headCircle.centerX, headY = headCircle.centerY;
         let headR = headCircle.radius;
-        let tailX = tailCircle.centerX;
-        let tailY = tailCircle.centerY;
+        let tailX = tailCircle.centerX, tailY = tailCircle.centerY;
         let tailR = tailCircle.radius;
         let D = Math.sqrt((tailX-headX)*(tailX-headX) + (tailY-headY)*(tailY-headY));
-        let headR_D = headR / D;
-        let tailR_D = tailR / D;
-        let head1X = headX + (headY - tailY) * headR_D;
-        let head1Y = headY - (headX - tailX) * headR_D;
-        let head2X = headX - (headY - tailY) * headR_D;
-        let head2Y = headY + (headX - tailX) * headR_D;
-        let tail1X = tailX + (headY - tailY) * tailR_D;
-        let tail1Y = tailY - (headX - tailX) * tailR_D;
-        let tail2X = tailX - (headY - tailY) * tailR_D;
-        let tail2Y = tailY + (headX - tailX) * tailR_D;
-        this.beatmapCtx.fillStyle = "rgba(255, 251, 240, 0.5)";
-        this.beatmapCtx.beginPath();
-        this.beatmapCtx.moveTo(head1X, head1Y);
-        this.beatmapCtx.lineTo(head2X, head2Y);
-        this.beatmapCtx.lineTo(tail2X, tail2Y);
-        this.beatmapCtx.lineTo(tail1X, tail1Y);
-        this.beatmapCtx.closePath();
-        this.beatmapCtx.fill();
+        let headR_D = headR / D, tailR_D = tailR / D;
+        let head1X = headX + (headY - tailY) * headR_D, head1Y = headY - (headX - tailX) * headR_D;
+        let head2X = headX - (headY - tailY) * headR_D, head2Y = headY + (headX - tailX) * headR_D;
+        let tail1X = tailX + (headY - tailY) * tailR_D, tail1Y = tailY - (headX - tailX) * tailR_D;
+        let tail2X = tailX - (headY - tailY) * tailR_D, tail2Y = tailY + (headX - tailX) * tailR_D;
+        let delta1X = (tail1X - head1X) * featherRatio / segment, delta1Y = (tail1Y - head1Y) * featherRatio / segment;
+        let delta2X = (tail2X - head2X) * featherRatio / segment, delta2Y = (tail2Y - head2Y) * featherRatio / segment;
+        let deltaAlpha = 0.5 / segment, alphaRatio = 1;
+        let colorStr = "rgba(255, 251, 245, ", endStr = ")";
+        if (isholding) {
+            let timeHolded = this.controller.frameTmg - noteTmg;
+            alphaRatio = Math.cos(timeHolded / 200) * 0.4 + 0.6;
+            colorStr = "rgba(247, 238, 200, ";
+        }
+        for (let i = 0; i < segment; i++) {
+            this._fillQuadrangle(colorStr + (i+1)*deltaAlpha*alphaRatio + endStr,
+                                 head1X + i*delta1X, head1Y + i*delta1Y,
+                                 head2X + i*delta2X, head2Y + i*delta2Y,
+                                 head2X + (i+1)*delta2X, head2Y + (i+1)*delta2Y,
+                                 head1X + (i+1)*delta1X, head1Y + (i+1)*delta1Y);
+            this._fillQuadrangle(colorStr + (i+1)*deltaAlpha*alphaRatio + endStr,
+                                 tail1X - i*delta1X, tail1Y - i*delta1Y,
+                                 tail2X - i*delta2X, tail2Y - i*delta2Y,
+                                 tail2X - (i+1)*delta2X, tail2Y - (i+1)*delta2Y,
+                                 tail1X - (i+1)*delta1X, tail1Y - (i+1)*delta1Y);
+        }
+        this._fillQuadrangle(colorStr + 0.5*alphaRatio + endStr,
+                             head1X + segment*delta1X, head1Y + segment*delta1Y,
+                             head2X + segment*delta2X, head2Y + segment*delta2Y,
+                             tail2X - segment*delta2X, tail2Y - segment*delta2Y,
+                             tail1X - segment*delta1X, tail1Y - segment*delta1Y);
     }
 
     _drawHoldTail(tailCircle) {
@@ -218,6 +291,18 @@ class Scene {
         this.beatmapCtx.drawImage(
             this.skinImage, spr["left"], spr["top"], spr["width"], spr["height"],
             tailX - tailR, tailY - tailR, tailR*2, tailR*2);
+    }
+
+
+    _fillQuadrangle(rgbaStr, pt1x, pt1y, pt2x, pt2y, pt3x, pt3y, pt4x, pt4y) {
+        this.beatmapCtx.fillStyle = rgbaStr;
+        this.beatmapCtx.beginPath();
+        this.beatmapCtx.moveTo(pt1x, pt1y);
+        this.beatmapCtx.lineTo(pt2x, pt2y);
+        this.beatmapCtx.lineTo(pt3x, pt3y);
+        this.beatmapCtx.lineTo(pt4x, pt4y);
+        this.beatmapCtx.closePath();
+        this.beatmapCtx.fill();
     }
 
     _resize() {
@@ -275,6 +360,24 @@ class LanePath {
     constructor(startX, startY, startR, destX, destY, destR) {
         this.startCircle = new Circle(startX, startY, startR);
         this.jdgCircle = new Circle(destX, destY, destR);
+
+        this.effects = [];
+    }
+
+    pushEffect(effectType, effectStartTmg) {
+        this.effects.push([effectType, effectStartTmg]);
+    }
+
+    removeEffect() {
+        this.effects.shift();
+    }
+
+}
+
+class Effect {
+    constructor(effectType, effectStartTmg) {
+        this.type = effectType;
+        this.startTmg = effectStartTmg;
     }
 }
 
@@ -343,3 +446,6 @@ function getCoordsMaiMai(startX=512, startY=342, startR=0, destR=56, laneLength=
     }
     return [startCircleCenters, startCircleRadii, jdgCircleCenters, jdgCircleRadii];
 }
+
+Effect.endScaling = 2;
+Effect.thickness = 0.1;

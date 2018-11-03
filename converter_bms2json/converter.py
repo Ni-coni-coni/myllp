@@ -212,7 +212,7 @@ def convert(bms_filename, json_filename):
 
 
 if __name__ == '__main__':
-    file = 'zonghe'
+    file = 'slide_small_interval'
     bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/' + file + '.bms'
     json_file = 'json/' + file + '.json'
     convert(bms_file, json_file)

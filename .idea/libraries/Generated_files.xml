@@ -2,31 +2,39 @@
   <library name="Generated files" type="javaScript">
     <properties>
       <sourceFilesUrls>
+        <item url="file://$PROJECT_DIR$/three_test/js/Stats-compiled.js" />
         <item url="file://$PROJECT_DIR$/controller-compiled.js" />
         <item url="file://$PROJECT_DIR$/judge-compiled.js" />
         <item url="file://$PROJECT_DIR$/test-compiled.js" />
         <item url="file://$PROJECT_DIR$/loader-compiled.js" />
         <item url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
+        <item url="file://$PROJECT_DIR$/three_test/js/three.min-compiled-compiled.js" />
         <item url="file://$PROJECT_DIR$/game-compiled.js" />
+        <item url="file://$PROJECT_DIR$/three_test/js/Three-compiled.js" />
         <item url="file://$PROJECT_DIR$/debugger-compiled.js" />
-        <item url="file://$PROJECT_DIR$/beatmap-compiled.js" />
-        <item url="file://$PROJECT_DIR$/legacy/game_before-compiled.js" />
         <item url="file://$PROJECT_DIR$/scene-compiled.js" />
         <item url="file://$PROJECT_DIR$/lib/howler.core.min-compiled.js" />
+        <item url="file://$PROJECT_DIR$/lib/three.min-compiled.js" />
+        <item url="file://$PROJECT_DIR$/beatmap-compiled.js" />
+        <item url="file://$PROJECT_DIR$/legacy/game_before-compiled.js" />
       </sourceFilesUrls>
     </properties>
     <CLASSES>
+      <root url="file://$PROJECT_DIR$/three_test/js/Stats-compiled.js" />
       <root url="file://$PROJECT_DIR$/controller-compiled.js" />
       <root url="file://$PROJECT_DIR$/judge-compiled.js" />
       <root url="file://$PROJECT_DIR$/test-compiled.js" />
       <root url="file://$PROJECT_DIR$/loader-compiled.js" />
       <root url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
+      <root url="file://$PROJECT_DIR$/three_test/js/three.min-compiled-compiled.js" />
       <root url="file://$PROJECT_DIR$/game-compiled.js" />
+      <root url="file://$PROJECT_DIR$/three_test/js/Three-compiled.js" />
       <root url="file://$PROJECT_DIR$/debugger-compiled.js" />
-      <root url="file://$PROJECT_DIR$/beatmap-compiled.js" />
-      <root url="file://$PROJECT_DIR$/legacy/game_before-compiled.js" />
       <root url="file://$PROJECT_DIR$/scene-compiled.js" />
       <root url="file://$PROJECT_DIR$/lib/howler.core.min-compiled.js" />
+      <root url="file://$PROJECT_DIR$/lib/three.min-compiled.js" />
+      <root url="file://$PROJECT_DIR$/beatmap-compiled.js" />
+      <root url="file://$PROJECT_DIR$/legacy/game_before-compiled.js" />
     </CLASSES>
     <SOURCES />
   </library>

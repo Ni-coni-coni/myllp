@@ -41,6 +41,8 @@ class Controller {
             } else {
                 return false;
             }
+        } else {
+            this.frameTmg = gameTmgNow;
         }
         this.beatmap.updatePos(gameTmgNow);
         this.beatmap.updateJdgPtrs(gameTmgNow, Judge.jdgRange["tap"].good);

@@ -3,7 +3,7 @@ class Game {
         this.assets = {
             image: {
                 bg: "assets/image/bg.jpg",
-                skin: "assets/image/skin.png"
+                skin: "assets/image/skin1.png"
             },
             sound: {
                 perfect: "assets/sound/perfect.mp3",
@@ -12,13 +12,13 @@ class Game {
                 music: "assets/sound/perfect.mp3"
             },
             json: {
-                beatmap: "assets/beatmap/zonghe.json",
+                beatmap: "assets/beatmap/slide_small_interval.json",
                 skinData: "assets/layout/skinData.json"
             }
         };
 
         this.loader = new Loader();
-        this.beatmap = new Beatmap(0.9, 0); // usrHS（每秒飞行usrHS/1000个lanePath长度），offset
+        this.beatmap = new Beatmap(1.2, 0); // usrHS（每秒飞行usrHS/1000个lanePath长度），offset
         this.controller = new Controller();
         this.scene = new Scene(1024, 682); // canvas宽，canvas高
         this.judge = new Judge();
@@ -41,6 +41,7 @@ class Game {
             this.scene.drawBackGround();
             this.scene.drawJdgCircles();
             this.judge.setScene(this.scene);
+            this.judge.setController(this.controller);
             this.judge.setSounds(this.loader.getAsset("perfect"),
                                   this.loader.getAsset("great"),
                                   this.loader.getAsset("good"));

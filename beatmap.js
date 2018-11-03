@@ -142,6 +142,7 @@ class Lane {
         this.jdgPtrOfITS = 0;
         this.jdgPtrOfITM = 0;
         this.holdNoteIdx = -1;
+        this.slideReady = true;
 
         this._initNotesAndIndices(laneData, HS, spdGroups, offset);
         this._initFrontBackPtrs()
@@ -226,6 +227,18 @@ class Lane {
 
     freeHoldNote() {
         this.holdNoteIdx = -1;
+    }
+
+    setSlideReady() {
+        this.slideReady = true;
+    }
+
+    setSlideNotReady() {
+        this.slideReady = false;
+    }
+
+    checkSlideReady() {
+        return this.slideReady;
     }
 
 }
