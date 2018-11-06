@@ -12,7 +12,7 @@ class Game {
                 music: "assets/sound/perfect.mp3"
             },
             json: {
-                beatmap: "assets/beatmap/slide_small_interval.json",
+                beatmap: "assets/beatmap/zonghe.json",
                 skinData: "assets/layout/skinData.json"
             }
         };
@@ -32,10 +32,11 @@ class Game {
             this.beatmap.setMultiMarks();
             this.controller.setBeatmap(this.beatmap);
             this.controller.setMusic(this.loader.getAsset("perfect"));
+            this.controller.setDuration();
             this.scene.setController(this.controller);
-            this.scene.createGameScene(this.loader.getAsset("bg"),
-                                       this.loader.getAsset("skin"),
-                                       this.loader.getAsset("skinData"));
+            let gameDiv = this.scene.createGameScene(this.loader.getAsset("bg"),
+                                                     this.loader.getAsset("skin"),
+                                                     this.loader.getAsset("skinData"));
             this.scene.initLanePaths();
             this.scene.drawBackGround();
             this.scene.drawJdgCircles();
@@ -45,7 +46,8 @@ class Game {
                                   this.loader.getAsset("great"),
                                   this.loader.getAsset("good"));
             this.judge.addTouchEvents();
-            this.scene.initStartButton();
+            this.controller.setGameDiv(gameDiv);
+            this.controller.setStartDiv(this.scene);
 
         });
     }

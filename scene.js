@@ -1,4 +1,6 @@
-
+//var stats = new Stats();
+//stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+//document.body.appendChild( stats.dom );
 
 class Scene {
     constructor(cvsWidth, cvsHeight, scalingLL=1.5, scalingL=1.2, scalingM=1.0, scalingS=0.8, scalingSS=0.66) {
@@ -55,12 +57,8 @@ class Scene {
 
         this._resize();
         window.onresize = () => this._resize();
-    }
 
-    initStartButton() {
-        this.startDiv = document.createElement("div");
-        this.gameDiv.appendChild(this.startDiv);
-        this._setStartDiv(this.startDiv);
+        return this.gameDiv;
     }
 
     setController(controller) {
@@ -102,9 +100,11 @@ class Scene {
     }
 
     animate() {
+        //stats.begin();
         if (this.controller.update()) {
             this._drawBeatmapFrame(this.controller.beatmap);
         }
+        //stats.end();
         requestAnimationFrame(this.animate.bind(this));
     }
 
@@ -155,7 +155,7 @@ class Scene {
             for (let ptr = lane.backPtrOfIPO; ptr < lane.frontPtrOfIPO; ptr++) {
                 let noteIdx = lane.indicesInPosOrd[ptr];
                 let note = lane.notesInTmgOrd[noteIdx];
-                if (!note.isPassed()) {
+                if (!note.isNotExist()) {
                     //console.log(laneIdx, "draw note");
                     this._drawNote(note, beatmap.getCurrPos(note.group), lanePath.startCircle, lanePath.jdgCircle);
                 }
@@ -346,23 +346,6 @@ class Scene {
         cvs.height = this.cvsHeight;
         cvs.style.width = "100%";
         cvs.style.height = "100%";
-    }
-
-    _setStartDiv(div) {
-        div.style.left = "42%";
-        div.style.top = "40%";
-        div.style.width = "16%";
-        div.style.height = "10%";
-        div.style.zIndex = 10;
-
-        div.style.color = "white";
-        div.style.fontSize = "30px";
-        div.style.textAlign = "center";
-        div.innerText = "Start!";
-        div.addEventListener("click", () => {
-            div.style.zIndex = -1;
-            this.controller.start(this);
-        });
     }
 
 }

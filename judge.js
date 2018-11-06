@@ -1,7 +1,6 @@
 
 var myDebugger = new Debugger();
 myDebugger.createDiv();
-myDebugger.logMsg("ready!");
 
 window.onerror = function(msg, url, line, col, error) {
     myDebugger.logMsg("异常信息："+msg);
@@ -10,6 +9,7 @@ window.onerror = function(msg, url, line, col, error) {
     myDebugger.logMsg("错误详情："+error);
 };
 
+
 class Judge {
 
     constructor() {
@@ -17,8 +17,6 @@ class Judge {
         this.controller = null;
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.audioContext = new AudioContext();
-
-        this.scoreBoard = null;
     }
 
     setSounds(perfect, great, good) {
@@ -114,8 +112,9 @@ class Judge {
             if (jdgPtr == jdgIndices.length) continue;
             let idx = jdgIndices[jdgPtr];
             let note = lane.notesInTmgOrd[idx];
+            if (note.isNotExist()) continue;
             let judgement = this._getJudgement(touchTmg, note);
-            if (judgement == 0) {
+            if (!judgement) {
                 continue;
             } else if (jdgType == "slide" && !lane.checkSlideJudgeOn()) {
                 continue;
@@ -132,12 +131,12 @@ class Judge {
                     if (note.isJudging()) {  // TODO 考虑条尾是slide的情况
                         that._execJdgEffect(3);
                         lanePath.pushEffect(3, note.tailTmg);
-                        note.setPassed();
+                        note.setDestroyed();
                         lane.freeHoldNote();
                     }
                 }, note.tailTmg - note.tmg, note, lane, lanePath, that);
             } else {
-                note.setPassed();
+                note.setDestroyed();
             }
 
             if (jdgType == "slide") {
@@ -154,7 +153,7 @@ class Judge {
                 let judgement = this._getJudgement(touchTmg, note, true);
                 this._execJdgEffect(judgement);
                 this.scene.lanePaths[laneIdx].pushEffect(judgement, this.controller.frameTmg);
-                note.setPassed();
+                note.setDestroyed();
                 lane.freeHoldNote();
             }
         }
@@ -177,7 +176,7 @@ class Judge {
         }
 
         if (deviation > Judge.jdgRange[jdgType].good) {
-            return 0;
+            return false;
         }
         else if (deviation > Judge.jdgRange[jdgType].great) {
             return 1;
@@ -191,6 +190,7 @@ class Judge {
     }
 
     _execJdgEffect(judgement) {
+
         switch (judgement) {
             case 3:
                 this._playSound(this.perfectSound);
@@ -204,6 +204,8 @@ class Judge {
             default:
                 break;
         }
+
+        this.controller.beatmap.scoreBoard.update(judgement);
     }
 
     _playSound(buffer) {
@@ -234,44 +236,3 @@ Judge.jdgRange = {
 };
 
 
-class ScoreBoard {
-    constructor (beatmap, perfectCoeff=1.0, greatCoeff=0.8, goodCoeff=0.5) {
-        this.perfectCoeff = perfectCoeff;
-        this.greatCoeff = greatCoeff;
-        this.goodCoeff = goodCoeff;
-
-        this.perfect = 0;
-        this.great = 0;
-        this.good = 0;
-        this.miss = 0;
-        this.score = 0;
-        this.combo = 0;
-    }
-
-    gain (judgement) {
-        switch (judgement) {
-            case 3:
-                this.perfect ++;
-                this.combo ++;
-                break;
-            case 2:
-                this.great ++;
-                this.combo ++;
-                break;
-            case 1:
-                this.good ++;
-                this.combo ++;
-                break;
-            case 0:
-                this.miss ++;
-                this.combo = 0;
-                break;
-            default:
-                console.error("judgement error");
-                break;
-        }
-    }
-
-
-
-}

@@ -4,11 +4,15 @@ class Beatmap {
         this.offset = offset;
         this.spdGroups = [];
         this.lanes = [];
+        this.duration = null;
+        this.scoreBoard = null;
     }
 
     init(beatmapData) {
         this._initSpdGroups(beatmapData["spdLinesData"]);
         this._initLanes(beatmapData["lanesData"]);
+        this.duration = this._getDuration();
+        this.scoreBoard = new ScoreBoard(this);
     }
 
     _initSpdGroups(spdLinesData) {
@@ -23,6 +27,18 @@ class Beatmap {
         } else {
             console.error("spdGroups has not been initialized yet");
         }
+    }
+
+    _getDuration() {
+        let duration = this.offset > 0 ? this.offset : 0;
+        for (let lane of this.lanes) {
+            let length = lane.notesInTmgOrd.length;
+            if (length == 0) continue;
+            let lastNote = lane.notesInTmgOrd[length-1];
+            let laneDuration = lastNote.tailTmg || lastNote.tmg;
+            if (laneDuration > duration) duration = laneDuration;
+        }
+        return duration;
     }
 
     setMultiMarks() {
@@ -106,13 +122,13 @@ class Beatmap {
             if (lane.jdgPtrOfITS < lane.indicesForTS.length) {
                 let noteToJdgForTS = lane.notesInTmgOrd[lane.indicesForTS[lane.jdgPtrOfITS]];
                 if (gameTmg - noteToJdgForTS.tmg > outRange) {
-                    noteToJdgForTS.setPassed();
+                    noteToJdgForTS.setPassed(this.scoreBoard);
                 }
             }
             if (lane.jdgPtrOfITM < lane.indicesForTM.length) {
                 let noteToJdgForTM = lane.notesInTmgOrd[lane.indicesForTM[lane.jdgPtrOfITM]];
                 if (gameTmg - noteToJdgForTM.tmg > outRange) {
-                    noteToJdgForTM.setPassed();
+                    noteToJdgForTM.setPassed(this.scoreBoard);
                 }
             }
             // 调整judge pointer
@@ -263,7 +279,15 @@ class Note {
         this.state = 1;
     }
 
-    setPassed() {
+    setPassed(scoreBoard) {
+        if (this.isNotExist()) {
+            scoreBoard.update(0);
+            if (this.isHold) scoreBoard.update(0);
+        }
+        this.state = 2;
+    }
+
+    setDestroyed() {
         this.state = 2;
     }
 
@@ -275,7 +299,7 @@ class Note {
         return this.state == 1;
     }
 
-    isPassed() {
+    isNotExist() {
         return this.state == 2;
     }
 
@@ -343,7 +367,98 @@ function _searchPos(timing, HS, left, right, spdLines) {
 }
 
 
+class ScoreBoard {
+    constructor (beatmap, perfectCoeff=1.0, greatCoeff=0.8, goodCoeff=0.5) {
+        this.perfectCoeff = perfectCoeff;
+        this.greatCoeff = greatCoeff;
+        this.goodCoeff = goodCoeff;
+        this.totalUnitNum = this._getUnitNum(beatmap);
+        this.totalScore = 1000000;
+        this.unitScore = this.totalScore / this.totalUnitNum;
 
+        this.scoreDiv = null;
+
+        this.unitCount = 0;
+        this.perfect = 0;
+        this.great = 0;
+        this.good = 0;
+        this.miss = 0;
+        this.score = 0;
+        this.combo = 0;
+
+    }
+
+    setScoreDiv(gameDiv) {
+        let div = document.createElement("div");
+        div.style.cssText = "left:40%;top:10%;width:20%;height:3%;color:white";
+        div.style.zIndex = 100;
+        div.style.fontSize = "24px";
+        div.style.textAlign = "center";
+        div.innerText = this.score;
+        this.scoreDiv = div;
+        gameDiv.appendChild(div);
+    }
+
+    showResult(gameDiv) {
+        this.scoreDiv.zIndex = -1;
+
+        let div = document.createElement("div");
+        div.style.cssText = "left:30%;top:30%;width:40%;height:40%;color:white";
+        div.style.zIndex = 100;
+        div.style.fontSize = "24px";
+        div.style.textAlign = "center";
+        div.innerText = "Score:" + Math.round(this.score) + "\n\n" +
+            "Total Notes:" + this.totalUnitNum + "\n" +
+            "Perfect:" + this.perfect + "\n" +
+            "Great:" + this.great + "\n" +
+            "Good:" + this.good + "\n" +
+            "Miss:" + this.miss;
+        this.scoreDiv = div;
+        gameDiv.appendChild(div);
+    }
+
+
+    _getUnitNum(beatmap) {
+        let unitNum = 0;
+        for (let lane of beatmap.lanes) {
+            for (let note of lane.notesInTmgOrd) {
+                if (note.isHold) unitNum ++;
+                unitNum ++;
+            }
+        }
+        return unitNum;
+    }
+
+    update (judgement) {
+        this.unitCount ++;
+        switch (judgement) {
+            case 3:
+                this.perfect ++;
+                this.combo ++;
+                this.score += this.perfectCoeff * this.unitScore;
+                break;
+            case 2:
+                this.great ++;
+                this.combo ++;
+                this.score += this.greatCoeff * this.unitScore;
+                break;
+            case 1:
+                this.good ++;
+                this.combo ++;
+                this.score += this.goodCoeff * this.unitScore;
+                break;
+            case 0:
+                this.miss ++;
+                this.combo = 0;
+                break;
+            default:
+                console.error("judgement error");
+                break;
+        }
+        this.scoreDiv.innerText = Math.round(this.score);
+    }
+
+}
 
 
 

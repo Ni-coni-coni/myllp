@@ -214,7 +214,7 @@ def convert(bms_filename, json_filename):
 if __name__ == '__main__':
     file = 'slide_small_interval'
     bms_file = 'C:/Users/Ushio/Desktop/ibmsc/Data/' + file + '.bms'
-    json_file = 'json/' + file + '.json'
+    json_file = 'C:/Users/Ushio/WebstormProjects/myllp/converter_bms2json/json/' + file + '.json'
     convert(bms_file, json_file)
 
 

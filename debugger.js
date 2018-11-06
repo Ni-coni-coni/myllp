@@ -11,7 +11,7 @@ class Debugger {
         document.body.appendChild(div);
 
         div.id = "debugDiv";
-        div.style.left = "20%";
+        div.style.left = "10%";
         div.style.top = "1%";
         div.style.width = "60%";
         div.style.height = "3%";
@@ -19,7 +19,7 @@ class Debugger {
 
         div.style.color = "white";
         div.style.fontSize = "20px";
-        div.style.textAlign = "center";
+        //div.style.textAlign = "center";
 
         this.debugDiv = div;
     }

@@ -1,3 +1,4 @@
+
 class Controller {
     constructor(usrFPS) {
         this.usrFPS = usrFPS;
@@ -6,11 +7,21 @@ class Controller {
         this.music = null;
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.audioContext = new AudioContext();
+        this.totalDuration = null;
         this.startTmg = null;
+
+        this.gameDiv = null;
+        this.startDiv = null;
+        this.resultDiv = null;
 
         this.frameTmg = null;
         this.frameNum = null;
         this.FPS = null;
+        this.isEnd = false;
+    }
+
+    setGameDiv(gameDiv) {
+        this.gameDiv = gameDiv;
     }
 
     setBeatmap(beatmap) {
@@ -21,7 +32,34 @@ class Controller {
         this.music = music;
     }
 
+    setDuration() {
+        this.totalDuration = this.music.duration * 1000 > this.beatmap.duration ?
+                             this.music.duration * 1000 : this.beatmap.duration;
+        this.totalDuration += 3000;
+    }
+
+    setStartDiv(scene) {
+        let div = document.createElement("div");
+
+        div.style.cssText = "left:42%;top:40%;width:16%;height:10%;color:white";
+        div.style.zIndex = 100;
+        div.style.fontSize = "30px";
+        div.style.textAlign = "center";
+        div.innerText = "Start!";
+        div.addEventListener("click", () => {
+            div.style.zIndex = -1;
+            this.start(scene);
+        });
+        this.startDiv = div;
+        if (scene.gameDiv == null) {
+            console.error("set game div first");
+        }
+        scene.gameDiv.appendChild(div);
+    }
+
     start(scene) {
+
+        this.beatmap.scoreBoard.setScoreDiv(this.gameDiv);
         this.startTmg = Date.now();
         this.frameTmg = 0;
         this.frameNum = 0;
@@ -29,9 +67,18 @@ class Controller {
         scene.animate();
     }
 
+    end() {
+        if (!this.isEnd) this.beatmap.scoreBoard.showResult(this.gameDiv);
+        this.isEnd = true;
+    }
+
     update() {
         if (this.beatmap == null) {
             console.error("set beatmap first!");
+        }
+        if (this.frameTmg > this.totalDuration) {
+            this.end();
+            return false;
         }
         let gameTmgNow = Date.now() - this.startTmg;
         if (this.fixedInterval != null) {
@@ -62,5 +109,6 @@ class Controller {
     }
 
 }
+
 
 

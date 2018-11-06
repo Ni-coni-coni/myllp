@@ -10,8 +10,9 @@
         <item url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
         <item url="file://$PROJECT_DIR$/three_test/js/three.min-compiled-compiled.js" />
         <item url="file://$PROJECT_DIR$/game-compiled.js" />
-        <item url="file://$PROJECT_DIR$/three_test/js/Three-compiled.js" />
         <item url="file://$PROJECT_DIR$/debugger-compiled.js" />
+        <item url="file://$PROJECT_DIR$/three_test/js/Three-compiled.js" />
+        <item url="file://$PROJECT_DIR$/lib/Stats-compiled.js" />
         <item url="file://$PROJECT_DIR$/scene-compiled.js" />
         <item url="file://$PROJECT_DIR$/lib/howler.core.min-compiled.js" />
         <item url="file://$PROJECT_DIR$/lib/three.min-compiled.js" />
@@ -28,8 +29,9 @@
       <root url="file://$PROJECT_DIR$/lib/vconsole.min-compiled.js" />
       <root url="file://$PROJECT_DIR$/three_test/js/three.min-compiled-compiled.js" />
       <root url="file://$PROJECT_DIR$/game-compiled.js" />
-      <root url="file://$PROJECT_DIR$/three_test/js/Three-compiled.js" />
       <root url="file://$PROJECT_DIR$/debugger-compiled.js" />
+      <root url="file://$PROJECT_DIR$/three_test/js/Three-compiled.js" />
+      <root url="file://$PROJECT_DIR$/lib/Stats-compiled.js" />
       <root url="file://$PROJECT_DIR$/scene-compiled.js" />
       <root url="file://$PROJECT_DIR$/lib/howler.core.min-compiled.js" />
       <root url="file://$PROJECT_DIR$/lib/three.min-compiled.js" />
