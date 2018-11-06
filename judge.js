@@ -1,13 +1,12 @@
 
 var myDebugger = new Debugger();
-myDebugger.createDebugDiv();
-myDebugger.logMsg("ready!!");
+myDebugger.createDiv();
+myDebugger.logMsg("ready!");
 
 window.onerror = function(msg, url, line, col, error) {
     myDebugger.logMsg("异常信息："+msg);
     myDebugger.logMsg("文件地址："+url);
     myDebugger.logMsg("错误行数："+line);
-    myDebugger.logMsg("错误列数: ",col);
     myDebugger.logMsg("错误详情："+error);
 };
 
@@ -16,14 +15,10 @@ class Judge {
     constructor() {
         this.scene = null;
         this.controller = null;
-
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.audioContext = new AudioContext();
 
-        //this.myDebugger = new Debugger();
-        //this.myDebugger.createDebugDiv();
-        //this.myDebugger.logMsg("Judge");
-
+        this.scoreBoard = null;
     }
 
     setSounds(perfect, great, good) {
@@ -49,44 +44,54 @@ class Judge {
     handleTouchStart(e) {
         e.preventDefault();
         let touchTmg = this.controller.getExactTmg();
-        let oneHotActiveLanes = this._getOneHotActiveLanes(e, "large");
+        let oneHotActiveLanes = this._getOneHotActiveLanes(e, "fanL_L");
         this._judgeNote(touchTmg, oneHotActiveLanes, "tap");
     }
 
     handleTouchEnd(e) {
         e.preventDefault();
         let touchTmg = this.controller.getExactTmg();
-        let oneHotLanesOnTouch = this._getOneHotLanesOnTouch(e, "large");
+        let oneHotLanesOnTouch = this._getOneHotLanesOnTouch(e, "fanL_L");
         this._judgeAway(touchTmg, oneHotLanesOnTouch);
     }
 
     handleTouchMove(e) {
         e.preventDefault();
         let touchTmg = this.controller.getExactTmg();
-        let oneHotActiveLanes = this._getOneHotActiveLanes(e, "small");
-        let oneHotLanesOnTouch = this._getOneHotLanesOnTouch(e, "large");
+        let oneHotRingActiveLanes = this._getOneHotActiveLanes(e, "fanLL-SS_LL-L");
+        let oneHotActiveLanes = this._getOneHotActiveLanes(e, "fanSS_L");
+        let oneHotLanesOnTouch = this._getOneHotLanesOnTouch(e, "fanL_L");
+        this._changeSlideStats(oneHotRingActiveLanes);
         this._judgeNote(touchTmg, oneHotActiveLanes, "slide");
         this._judgeAway(touchTmg, oneHotLanesOnTouch);
     }
 
-    _getOneHotActiveLanes(e, touchScaling) {
+    _getOneHotActiveLanes(e, area) {
         let oneHotActiveLanes = this.scene.getDefaultOneHot();
         for (let i = 0; i < e.changedTouches.length; i++) {
             let cvsX = this.scene.page2cvsX(e.changedTouches[i].pageX);
             let cvsY = this.scene.page2cvsY(e.changedTouches[i].pageY);
-            this.scene.addActive(oneHotActiveLanes, cvsX, cvsY, touchScaling);
+            this.scene.addActive(oneHotActiveLanes, cvsX, cvsY, area);
         }
         return oneHotActiveLanes;
     }
 
-    _getOneHotLanesOnTouch(e, touchScaling) {
+    _getOneHotLanesOnTouch(e, area) {
         let oneHotLanesOnTouch = this.scene.getDefaultOneHot();
         for (let i = 0; i < e.touches.length; i++) {
             let cvsX = this.scene.page2cvsX(e.touches[i].pageX);
             let cvsY = this.scene.page2cvsY(e.touches[i].pageY);
-            this.scene.addActive(oneHotLanesOnTouch, cvsX, cvsY, touchScaling);
+            this.scene.addActive(oneHotLanesOnTouch, cvsX, cvsY, area);
         }
         return oneHotLanesOnTouch;
+    }
+
+    _changeSlideStats(oneHotRingActiveLanes) {
+        for (let laneIdx in oneHotRingActiveLanes) {
+            if (!oneHotRingActiveLanes[laneIdx]) continue;
+            let lane = this.controller.beatmap.lanes[laneIdx];
+            lane.slideJudgeOn();
+        }
     }
 
     _judgeNote(touchTmg, oneHotActiveLanes, jdgType) {
@@ -99,31 +104,25 @@ class Judge {
                 jdgIndices = lane.indicesForTS;
             }
             else if (jdgType == "slide") {
-                if (lane.checkSlideReady()) {
-                    jdgPtr = lane.jdgPtrOfITM;
-                    jdgIndices = lane.indicesForTM;
-                } else {
-                    continue;
-                }
+                jdgPtr = lane.jdgPtrOfITM;
+                jdgIndices = lane.indicesForTM;
             }
             else {
                 console.error("judge type error");
             }
+
             if (jdgPtr == jdgIndices.length) continue;
             let idx = jdgIndices[jdgPtr];
             let note = lane.notesInTmgOrd[idx];
             let judgement = this._getJudgement(touchTmg, note);
             if (judgement == 0) {
                 continue;
-            } else if (jdgType == "slide") {
-                lane.setSlideNotReady();
-                setTimeout(function (lane) {
-                    lane.setSlideReady();
-                }, 80, lane);
+            } else if (jdgType == "slide" && !lane.checkSlideJudgeOn()) {
+                continue;
             }
+
             this._execJdgEffect(judgement);
             this.scene.lanePaths[laneIdx].pushEffect(judgement, this.controller.frameTmg);
-            //this.myDebugger.logMsg(touchTmg, judgement, laneIdx, lane.jdgPtrOfITS);
             if (note.isHold) {
                 note.setJudging();
                 lane.setHoldNote(idx);
@@ -139,6 +138,10 @@ class Judge {
                 }, note.tailTmg - note.tmg, note, lane, lanePath, that);
             } else {
                 note.setPassed();
+            }
+
+            if (jdgType == "slide") {
+                lane.slideJudgeOff();
             }
         }
     }
@@ -229,3 +232,46 @@ Judge.jdgRange = {
         good: Number.POSITIVE_INFINITY
     }
 };
+
+
+class ScoreBoard {
+    constructor (beatmap, perfectCoeff=1.0, greatCoeff=0.8, goodCoeff=0.5) {
+        this.perfectCoeff = perfectCoeff;
+        this.greatCoeff = greatCoeff;
+        this.goodCoeff = goodCoeff;
+
+        this.perfect = 0;
+        this.great = 0;
+        this.good = 0;
+        this.miss = 0;
+        this.score = 0;
+        this.combo = 0;
+    }
+
+    gain (judgement) {
+        switch (judgement) {
+            case 3:
+                this.perfect ++;
+                this.combo ++;
+                break;
+            case 2:
+                this.great ++;
+                this.combo ++;
+                break;
+            case 1:
+                this.good ++;
+                this.combo ++;
+                break;
+            case 0:
+                this.miss ++;
+                this.combo = 0;
+                break;
+            default:
+                console.error("judgement error");
+                break;
+        }
+    }
+
+
+
+}

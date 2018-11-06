@@ -1,18 +1,20 @@
 
 
 class Scene {
-    constructor(cvsWidth, cvsHeight, largeScaling=1.2, smallScaling=1.0) {
+    constructor(cvsWidth, cvsHeight, scalingLL=1.5, scalingL=1.2, scalingM=1.0, scalingS=0.8, scalingSS=0.66) {
         this.cvsWidth = cvsWidth;
         this.cvsHeight = cvsHeight;
-        this.largeScaling = largeScaling;
-        this.smallScaling = smallScaling;
+        this.scalingLL = scalingLL;
+        this.scalingL = scalingL;
+        this.scalingM = scalingM;
+        this.scalingS = scalingS;
+        this.scalingSS = scalingSS;
         this.controller = null;
 
         this.scaling = 1;
         this.cvsOffsetLeft = 0;
         this.cvsOffsetTop = 0;
         this.lanePaths = [];
-
     }
 
     createGameScene(bgImage, skinImage, skinData) {
@@ -110,20 +112,29 @@ class Scene {
         return new Array(this.lanePaths.length).fill(false);
     }
 
-    addActive(oneHotArr, touchX, touchY, touchScaling) {
-        let UsedScaling;
-        if (touchScaling == "large") {
-            UsedScaling = this.largeScaling;
+    addActive(oneHotArr, touchX, touchY, area) {
+        let widthScalingInclude, heightScalingInclude, widthScalingExcept, heightScalingExcept = null;
+        if (area == "fanL_L") {
+            widthScalingInclude = this.scalingL;
+            heightScalingInclude = this.scalingL;
         }
-        else if (touchScaling == "small") {
-            UsedScaling = this.smallScaling;
+        else if (area == "fanSS_L") {
+            widthScalingInclude = this.scalingSS;
+            heightScalingInclude = this.scalingL;
+        }
+        else if (area == "fanLL-SS_LL-L") {
+            widthScalingInclude = this.scalingLL;
+            heightScalingInclude = this.scalingLL;
+            widthScalingExcept = this.scalingSS;
+            heightScalingExcept = this.scalingL;
         }
         else {
-            console.error("touch type error");
+            console.error("area type error");
         }
         for (let idx in this.lanePaths) {
             oneHotArr[idx] = oneHotArr[idx] ||
-                this.lanePaths[idx].jdgCircle.checkInside(touchX, touchY, UsedScaling);
+                this.lanePaths[idx].checkInsideFan(touchX, touchY,
+                    widthScalingInclude, heightScalingInclude, widthScalingExcept, heightScalingExcept);
         }
     }
 
@@ -361,7 +372,73 @@ class LanePath {
         this.startCircle = new Circle(startX, startY, startR);
         this.jdgCircle = new Circle(destX, destY, destR);
 
+        this.refPointX = null;
+        this.refPointY = null;
+        this.jdgCenterRho = null;
+        this.jdgCenterPhi = null;
+        this.thresholdAngle = null;
         this.effects = [];
+
+        this._setRefPoint();
+        this._setRhoPhi();
+        this._setThresholdAngle()
+    }
+
+    _setRefPoint() {
+        this.refPointX = this.startCircle.centerX + (this.startCircle.centerX - this.jdgCircle.centerX) *
+            this.startCircle.radius / (this.startCircle.radius - this.jdgCircle.radius);
+        this.refPointY = this.startCircle.centerY + (this.startCircle.centerY - this.jdgCircle.centerY) *
+            this.startCircle.radius / (this.startCircle.radius - this.jdgCircle.radius);
+    }
+
+    _setRhoPhi() {
+        let dx = this.jdgCircle.centerX - this.refPointX;
+        let dy = this.jdgCircle.centerY - this.refPointY;
+
+        this.jdgCenterRho = Math.sqrt(dx * dx + dy * dy);
+        this.jdgCenterPhi = Math.atan2(dy, dx);
+    }
+
+    _setThresholdAngle() {
+        this.thresholdAngle = Math.asin(this.jdgCircle.radius / this.jdgCenterRho);
+    }
+
+    _getPolarCoords(x, y) {
+        let dx = x - this.refPointX;
+        let dy = y - this.refPointY;
+        let rho = Math.sqrt(dx * dx + dy * dy);
+        let phi = Math.atan2(dy, dx);
+        return [rho, phi];
+    }
+
+    checkInsideFan(x, y, widthScalingInclude, heightScalingInclude, widthScalingExcept=null, heightScalingExcept=null) {
+        let res = this._getPolarCoords(x, y);
+        let rho = res[0], phi = res[1];
+        if (phi - this.jdgCenterPhi > Math.PI) {
+            phi -= 2 * Math.PI;
+        } else if (phi - this.jdgCenterPhi < - Math.PI) {
+            phi += 2 * Math.PI;
+        }
+        let isInside = rho > this.jdgCenterRho - this.jdgCircle.radius * heightScalingInclude &&
+                       rho < this.jdgCenterRho + this.jdgCircle.radius * heightScalingInclude &&
+                       phi > this.jdgCenterPhi - this.thresholdAngle * widthScalingInclude &&
+                       phi < this.jdgCenterPhi + this.thresholdAngle * widthScalingInclude;
+        if (widthScalingExcept != null && heightScalingExcept != null) {
+            isInside = (rho < this.jdgCenterRho - this.jdgCircle.radius * heightScalingExcept ||
+                        rho > this.jdgCenterRho + this.jdgCircle.radius * heightScalingExcept ||
+                        phi < this.jdgCenterPhi - this.thresholdAngle * widthScalingExcept ||
+                        phi > this.jdgCenterPhi + this.thresholdAngle * widthScalingExcept) &&
+                        isInside;
+        } else if (widthScalingExcept != null) {
+            isInside = (phi < this.jdgCenterPhi - this.thresholdAngle * widthScalingExcept ||
+                        phi > this.jdgCenterPhi + this.thresholdAngle * widthScalingExcept) &&
+                        isInside;
+        } else if (heightScalingExcept != null) {
+            isInside = (rho < this.jdgCenterRho - this.jdgCircle.radius * heightScalingExcept ||
+                        rho > this.jdgCenterRho + this.jdgCircle.radius * heightScalingExcept) &&
+                        isInside;
+        }
+        return isInside;
     }
 
     pushEffect(effectType, effectStartTmg) {
@@ -388,10 +465,15 @@ class Circle {
         this.radius = radius;
     }
 
-    checkInside(touchX, touchY, scaling) {
+    checkInside(touchX, touchY, scalingInclude, scalingExcept=null) {
         let dX = touchX - this.centerX;
         let dY = touchY - this.centerY;
-        return dX*dX + dY*dY < this.radius * this.radius * scaling * scaling;
+        if (scalingExcept == null) {
+            return dX*dX + dY*dY < this.radius * this.radius * scalingInclude * scalingInclude;
+        } else {
+            return dX*dX + dY*dY < this.radius * this.radius * scalingInclude * scalingInclude &&
+                dX*dX + dY*dY > this.radius * this.radius * scalingExcept * scalingExcept;
+        }
     }
 
     static getScaledCircle(startCircle, endCircle, scalingFromStart) {
@@ -407,6 +489,10 @@ class Circle {
         return new Circle(noteX, noteY, noteR);
     }
 
+}
+
+function getSquareD(x1, y1, x2, y2) {
+    return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
 }
 
 function getCoordsSIF(startX=512, startY=170, startR=0, destR=68, laneLength=425) {

@@ -142,7 +142,7 @@ class Lane {
         this.jdgPtrOfITS = 0;
         this.jdgPtrOfITM = 0;
         this.holdNoteIdx = -1;
-        this.slideReady = true;
+        this.slideStat = 1;
 
         this._initNotesAndIndices(laneData, HS, spdGroups, offset);
         this._initFrontBackPtrs()
@@ -229,16 +229,16 @@ class Lane {
         this.holdNoteIdx = -1;
     }
 
-    setSlideReady() {
-        this.slideReady = true;
+    slideJudgeOn() {
+        this.slideStat = 1;
     }
 
-    setSlideNotReady() {
-        this.slideReady = false;
+    slideJudgeOff() {
+        this.slideStat = 0;
     }
 
-    checkSlideReady() {
-        return this.slideReady;
+    checkSlideJudgeOn() {
+        return this.slideStat == 1;
     }
 
 }
@@ -246,7 +246,7 @@ class Lane {
 class Note {
     constructor(tmg, pos, type, group) {
         this.tmg = tmg;
-        this.pos = pos; // pos的单位为一个起点到终点
+        this.pos = pos; // pos的单位为起点到判定点的距离
         this.type = type; // 0:tap 1:slide 2:flick 3:tap-hold 4:slide-hold
         this.group = group;
         this.multiMark = false;

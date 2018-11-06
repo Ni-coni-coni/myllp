@@ -6,7 +6,7 @@ class Debugger {
         this.debugDiv = null;
     }
 
-    createDebugDiv() {
+    createDiv() {
         let div = document.createElement("div");
         document.body.appendChild(div);
 

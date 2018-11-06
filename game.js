@@ -30,7 +30,6 @@ class Game {
         .then(() => {
             this.beatmap.init(this.loader.getAsset("beatmap"));
             this.beatmap.setMultiMarks();
-            console.log(this.beatmap);
             this.controller.setBeatmap(this.beatmap);
             this.controller.setMusic(this.loader.getAsset("perfect"));
             this.scene.setController(this.controller);
