@@ -183,7 +183,7 @@ class Lane {
                 this.notesInTmgOrd.push(new Note(noteTmg, notePos, noteType, noteGroup));
             } else {
                 let holdTailData = laneData[++i];
-                let holdTailTmg = holdTailData[0];
+                let holdTailTmg = holdTailData[0] + offset;
                 let holdTailPos = _searchPos(holdTailTmg, HS,
                     0, spdGroups[noteGroup].spdLines.length - 1,
                     spdGroups[noteGroup].spdLines);
@@ -390,7 +390,7 @@ class ScoreBoard {
 
     setScoreDiv(gameDiv) {
         let div = document.createElement("div");
-        div.style.cssText = "left:40%;top:10%;width:20%;height:3%;color:white";
+        div.style.cssText = "left:20%;top:1%;width:20%;height:3%;color:white";
         div.style.zIndex = 100;
         div.style.fontSize = "24px";
         div.style.textAlign = "center";

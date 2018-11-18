@@ -3,7 +3,7 @@
 //document.body.appendChild( stats.dom );
 
 class Scene {
-    constructor(cvsWidth, cvsHeight, scalingLL=1.5, scalingL=1.2, scalingM=1.0, scalingS=0.8, scalingSS=0.66) {
+    constructor(cvsWidth, cvsHeight, scalingLL=1.6, scalingL=1.3, scalingM=1.0, scalingS=0.8, scalingSS=0.73) {
         this.cvsWidth = cvsWidth;
         this.cvsHeight = cvsHeight;
         this.scalingLL = scalingLL;
@@ -66,7 +66,7 @@ class Scene {
     }
 
     initLanePaths() {
-        let layoutDataArr = getCoordsSIF(512, 170, 0, 68, 425);
+        let layoutDataArr = getCoordsSIF();
         let startCircleCenters = layoutDataArr[0];
         let startCircleRadii = layoutDataArr[1];
         let jdgCircleCenters = layoutDataArr[2];
@@ -116,17 +116,17 @@ class Scene {
         let widthScalingInclude, heightScalingInclude, widthScalingExcept, heightScalingExcept = null;
         if (area == "fanL_L") {
             widthScalingInclude = this.scalingL;
-            heightScalingInclude = this.scalingL;
+            heightScalingInclude = this.scalingLL;
         }
         else if (area == "fanSS_L") {
             widthScalingInclude = this.scalingSS;
-            heightScalingInclude = this.scalingL;
+            heightScalingInclude = this.scalingLL;
         }
         else if (area == "fanLL-SS_LL-L") {
             widthScalingInclude = this.scalingLL;
             heightScalingInclude = this.scalingLL;
             widthScalingExcept = this.scalingSS;
-            heightScalingExcept = this.scalingL;
+            heightScalingExcept = this.scalingLL;
         }
         else {
             console.error("area type error");
@@ -497,7 +497,7 @@ function getCoordsSIF(startX=512, startY=170, startR=0, destR=68, laneLength=425
     return [startCircleCenters, startCircleRadii, jdgCircleCenters, jdgCircleRadii];
 }
 
-function getCoordsMaiMai(startX=512, startY=342, startR=0, destR=56, laneLength=260) {
+function getCoordsMaiMai(startX=512, startY=342, startR=20, destR=56, laneLength=290) {
     let pi = Math.PI;
     let angle = pi / 4;
     let centerX, centerY;

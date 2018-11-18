@@ -4,6 +4,7 @@ class Controller {
         this.usrFPS = usrFPS;
         this.fixedInterval = (usrFPS == null) ? null : 1000 / usrFPS;
         this.beatmap = null;
+        this.beatmap_copy = null;
         this.music = null;
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.audioContext = new AudioContext();

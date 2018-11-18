@@ -9,6 +9,10 @@ window.onerror = function(msg, url, line, col, error) {
     myDebugger.logMsg("错误详情："+error);
 };
 
+window.onunload = function() {
+    alert("111");
+};
+
 
 class Judge {
 
